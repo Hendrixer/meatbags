@@ -38,7 +38,19 @@ async function postTask(
     return `local-${taskId}`;
   }
   const { createTaskThread } = await import("../discord/tasks.js");
-  const { threadId } = await createTaskThread(assignee, ask);
+  // Best-effort welcome voicemail — dispatch never waits on a flaky render.
+  let audio: Buffer | undefined;
+  try {
+    const { voicemailVoice } = await import("../supervisor/index.js");
+    const { renderVoicemail } = await import("../services/index.js");
+    const t = await getTask(taskId);
+    const file = String((t?.args as { file?: unknown })?.file ?? "a new task");
+    const script = await voicemailVoice(assignee.name, file, 1);
+    if (script) audio = await renderVoicemail(script);
+  } catch (err) {
+    console.warn(`dispatch voicemail skipped: ${(err as Error).message}`);
+  }
+  const { threadId } = await createTaskThread(assignee, ask, audio);
   return threadId;
 }
 

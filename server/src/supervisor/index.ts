@@ -2,8 +2,10 @@ import type { Agent } from "../db/repo.js";
 import { readCandidates, readRoster, upsertAgent } from "../db/repo.js";
 import { canFetchRoster, fetchGuildMembers } from "../discord/index.js";
 import { describeTask, summarize } from "./describe.js";
+import { askVoice } from "./voice.js";
 
 export { describeTask, summarize };
+export { voicemailVoice, mentionVoice, emailVoice } from "./voice.js";
 
 export interface Assignment {
   assignee: Pick<Agent, "discordId" | "name">;
@@ -70,9 +72,14 @@ export async function assign(
     `${source} · open=${picked.openTasks} · ` +
     `last=${picked.lastAssignedAt ? picked.lastAssignedAt.toISOString() : "never"}`;
 
+  // Best-effort personality; the deterministic ask stands on its own if the
+  // model is unconfigured, slow, or weird.
+  const file = String((args as { file?: unknown }).file ?? toolName);
+  const voice = await askVoice(picked.name, file);
+
   return {
     assignee: { discordId: picked.discordId, name: picked.name },
-    ask: describeTask(toolName, args),
-    how,
+    ask: describeTask(toolName, args, voice),
+    how: `${how}${voice ? " · voiced" : " · stock ask"}`,
   };
 }

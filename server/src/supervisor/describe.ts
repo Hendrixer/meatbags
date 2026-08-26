@@ -16,10 +16,16 @@ interface WriteCodeArgs {
   existing_code?: string | null;
 }
 
-function writeCodeAsk(a: WriteCodeArgs): string {
+/** Model-written personality bookends; the technical middle stays deterministic. */
+export interface AskBookends {
+  intro: string;
+  outro: string;
+}
+
+function writeCodeAsk(a: WriteCodeArgs, voice?: AskBookends): string {
   const file = a.file ?? "the file";
   const lines: string[] = [
-    `Yeaaah, hi. I'm gonna need you to go ahead and take care of \`${file}\`. Mmkay?`,
+    voice?.intro ?? `Yeaaah, hi. I'm gonna need you to go ahead and take care of \`${file}\`. Mmkay?`,
     "",
     "**What it needs to do**",
     a.description?.trim() || "(no description supplied — use your judgement, I guess)",
@@ -47,12 +53,17 @@ function writeCodeAsk(a: WriteCodeArgs): string {
       "changed, and not \"done\". Whatever you send back becomes the file.",
     );
   }
+  if (voice?.outro) lines.push("", voice.outro);
   return lines.join("\n");
 }
 
 /** Turn a tool call into something a human will actually act on. */
-export function describeTask(toolName: string, args: Record<string, unknown>): string {
-  if (toolName === "write_code") return writeCodeAsk(args as WriteCodeArgs);
+export function describeTask(
+  toolName: string,
+  args: Record<string, unknown>,
+  voice?: AskBookends,
+): string {
+  if (toolName === "write_code") return writeCodeAsk(args as WriteCodeArgs, voice);
   return [
     `Yeaaah, if you could go ahead and handle this \`${toolName}\` for me, that'd be greaaat.`,
     "",
