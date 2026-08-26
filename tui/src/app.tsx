@@ -177,7 +177,7 @@ export function App() {
           <Text>{streamingText}</Text>
         </Box>
       )}
-      <Box flexDirection="row" gap={1}>
+      <Box flexDirection="row" gap={1} alignItems="flex-end">
         <Box flexDirection="column" flexGrow={1}>
           {turnRunning && <StatusLine phase={phase} />}
           <InputBar onSubmit={handleSubmit} disabled={turnRunning} />
