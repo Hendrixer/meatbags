@@ -2,8 +2,11 @@
   "name": "tui",
   "private": true,
   "version": "1.0.0",
-  "description": "TPS — Task Provisioning System. A very normal software agent.",
+  "description": "TPS \u2014 Task Provisioning System. A very normal software agent.",
   "type": "module",
+  "bin": {
+    "tps": "bin/tps.js"
+  },
   "scripts": {
     "dev": "tsx --env-file=.env src/index.tsx",
     "mock": "MEATBAG_MOCK=1 tsx --env-file=.env src/index.tsx",
