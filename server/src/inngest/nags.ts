@@ -7,7 +7,7 @@
 import { config } from "../config.js";
 import { getTask } from "../db/repo.js";
 import { publicMention } from "../discord/index.js";
-import { sendEmail } from "../services/index.js";
+import { renderVoicemail, sendEmail } from "../services/index.js";
 
 function threadUrl(threadId: string | null): string {
   if (!threadId || !config.discord.guildId) return "(thread link unavailable)";
@@ -25,12 +25,24 @@ export async function nag(taskId: string, level: number): Promise<string> {
 
   if (level === 2) {
     if (!task.agentId) return "level 2: no assignee to mention";
+    // Best-effort voicemail; a flaky TTS render shouldn't block the shaming.
+    let audio: Buffer | undefined;
+    try {
+      audio = await renderVoicemail(
+        `Yeaaah, hi ${who}. Me again. I'm just circling back on that task, ` +
+          `because I'm... not seeing a reply in the thread yet? ` +
+          `So if you could go ahead and get to that, that would be terrific. Mmkay.`,
+      );
+    } catch (err) {
+      console.warn(`level 2 voicemail render failed: ${(err as Error).message}`);
+    }
     await publicMention(
       { discordId: task.agentId },
-      `Just circling back on "${what}" — I'm not seeing a reply in the thread yet. ` +
+      `Just circling back on "${subjectWhat}" — I'm not seeing a reply in the thread yet. ` +
         `Not a big deal, just, you know. It's been a while. Mmkay?`,
+      audio,
     );
-    return "level 2: public mention posted";
+    return `level 2: public mention posted${audio ? " with voicemail" : ""}`;
   }
 
   if (level === 3) {

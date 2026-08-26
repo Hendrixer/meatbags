@@ -58,11 +58,12 @@ export async function nagInThread(
   }
 }
 
-/** Escalation level 2: public @mention in #tasks (not the thread). */
+/** Escalation level 2: public @mention in #tasks (not the thread), with an optional voicemail. */
 export async function publicMention(
   assignee: Pick<Assignee, "discordId">,
   text: string,
+  audio?: Buffer | string,
 ): Promise<void> {
   const channel = await tasksChannel();
-  await channel.send(`<@${assignee.discordId}> ${text}`);
+  await channel.send({ content: `<@${assignee.discordId}> ${text}`, files: attachment(audio) });
 }
