@@ -9,6 +9,7 @@
     "start": "tsx --env-file=.env ./index.ts",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx --env-file=.env ./src/db/seed.ts",
+    "demo:task": "tsx ./scripts/submit-task.ts",
     "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

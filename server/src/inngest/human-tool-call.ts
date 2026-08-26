@@ -34,8 +34,12 @@ async function postTask(
   ask: string,
   taskId: string,
 ): Promise<string> {
-  if (!config.discord.botToken) {
-    console.log(`[no discord] would post to ${assignee.name}:\n${ask}\n`);
+  // Needs BOTH a bot and somewhere to post. A token with no channel id would
+  // throw inside the dispatch step and just look like a broken workflow.
+  if (!config.discord.botToken || !config.discord.tasksChannelId) {
+    console.log(
+      `\n─── [no discord] would post to ${assignee.name} ───\n${ask}\n───────────────────────────────\n`,
+    );
     return `local-${taskId}`;
   }
   const { createTaskThread } = await import("../discord/tasks.js");
