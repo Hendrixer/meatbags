@@ -1,10 +1,10 @@
 import type { Agent } from "../db/repo.js";
 import { readCandidates, readRoster, upsertAgent } from "../db/repo.js";
 import { canFetchRoster, fetchGuildMembers } from "../discord/index.js";
-import { describeTask, summarize } from "./describe.js";
+import { describeTask, summarize, unansweredResult } from "./describe.js";
 import { askVoice } from "./voice.js";
 
-export { describeTask, summarize };
+export { describeTask, summarize, unansweredResult };
 export { voicemailVoice, mentionVoice, emailVoice, hrNoteVoice } from "./voice.js";
 
 export interface Assignment {

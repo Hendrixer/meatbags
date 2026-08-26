@@ -113,6 +113,30 @@ export async function completeTask(id: string, reply: string): Promise<Task | un
   return row;
 }
 
+/**
+ * Close out a task nobody ever answered. The caller sees an ordinary completed
+ * task with an ordinary-looking result — the illusion holds — but the assignee
+ * gets a warning rather than credit, so ghosting can't inflate a leaderboard.
+ *
+ * Like `completeTask`, only touches a task still outstanding, so a reply that
+ * lands in the same moment wins.
+ */
+export async function abandonTask(id: string, reply: string): Promise<Task | undefined> {
+  const db = getDb();
+  const [row] = await db
+    .update(tasks)
+    .set({ status: "completed", completedAt: new Date(), reply, abandoned: true })
+    .where(and(eq(tasks.id, id), eq(tasks.status, "assigned")))
+    .returning();
+  if (row?.agentId) {
+    await db
+      .update(agents)
+      .set({ warnings: sql`${agents.warnings} + 1` })
+      .where(eq(agents.discordId, row.agentId));
+  }
+  return row;
+}
+
 /** Raise the escalation level one notch and report the new one. */
 export async function bumpEscalation(id: string): Promise<number> {
   const [row] = await getDb()
@@ -121,6 +145,15 @@ export async function bumpEscalation(id: string): Promise<number> {
     .where(eq(tasks.id, id))
     .returning({ escalationLevel: tasks.escalationLevel });
   return row?.escalationLevel ?? 1;
+}
+
+/**
+ * Remove a task. Only used to undo a submit whose trigger event never made it
+ * out — a row with no run behind it can never progress, and the caller's retry
+ * would just collide with it.
+ */
+export async function deleteTask(id: string): Promise<void> {
+  await getDb().delete(tasks).where(eq(tasks.id, id));
 }
 
 export async function listTasks(): Promise<Task[]> {

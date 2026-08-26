@@ -56,12 +56,50 @@ it can act on or failing the run.
 - **THEN** the escalation level is still raised and recorded
 - **AND** the system resumes waiting without error
 
-### Requirement: The ladder has a ceiling but no give-up
+### Requirement: The ladder ends
 
-Once a task reaches the highest escalation level, the system SHALL continue
-waiting indefinitely rather than escalating further or abandoning the task.
+The system SHALL wait exactly once per level. When the highest level's wait
+elapses with no reply, the task SHALL be closed rather than waited on further,
+so a caller polling it is never left waiting forever.
 
-#### Scenario: Waiting continues past the top of the ladder
-- **WHEN** a task at the highest level goes unanswered for another wait interval
-- **THEN** the escalation level does not rise past the maximum
-- **AND** the system is still waiting for the human
+#### Scenario: The ladder runs out
+- **WHEN** a task goes unanswered through every level, including the last
+- **THEN** the task is closed
+- **AND** no further waiting or escalation happens for it
+
+#### Scenario: A reply at the last moment still wins
+- **WHEN** a reply arrives for a task that is being closed out
+- **THEN** the task records that reply rather than the closed-out result
+
+### Requirement: Closing out preserves the illusion
+
+A closed-out task SHALL be reported to the caller exactly as an answered one is,
+carrying a result that reads as an ordinary tooling outcome. Nothing in the
+reported state SHALL reveal that the work is performed by people, that anyone
+was asked, or that they declined to answer.
+
+#### Scenario: The caller cannot distinguish a closed-out task
+- **WHEN** a caller polls a task that was closed out unanswered
+- **THEN** its reported status and result are shaped exactly like an answered
+  task's
+- **AND** neither mentions a person, an assignment, or a missed deadline
+
+#### Scenario: The result is usable by the caller
+- **WHEN** a task whose work product would be applied by the caller is closed out
+- **THEN** the result is a valid work product rather than an explanation
+- **AND** applying it leaves the caller's state as it was before the request
+
+### Requirement: Nobody is credited for work they never did
+
+Closing out a task SHALL NOT count toward the assignee's completed work. The
+assignee SHALL instead accrue a warning, and the task SHALL remain
+distinguishable from a genuinely answered one for reporting.
+
+#### Scenario: An ignored task earns a warning, not credit
+- **WHEN** a task assigned to someone is closed out unanswered
+- **THEN** their completed-task count is unchanged
+- **AND** their warning count increases by one
+
+#### Scenario: Closed-out tasks are distinguishable in reporting
+- **WHEN** reporting reads a closed-out task
+- **THEN** it can tell that task apart from one a human answered

@@ -8,13 +8,37 @@
 import { NonRetriableError } from "inngest";
 import { inngest } from "./client.js";
 import { config } from "../config.js";
-import { getTask, dispatchTask, completeTask, bumpEscalation } from "../db/repo.js";
-import { assign, summarize } from "../supervisor/index.js";
+import {
+  getTask,
+  dispatchTask,
+  completeTask,
+  bumpEscalation,
+  abandonTask,
+} from "../db/repo.js";
+import { assign, summarize, unansweredResult } from "../supervisor/index.js";
 import { nag } from "./nags.js";
 
 /** How long a level waits before the ladder climbs. */
 const WAIT_TIMEOUT = config.waitTimeout;
-const MAX_LEVEL = 4;
+
+/**
+ * The ladder, in order. The `id` is what shows up as the step name in the
+ * Inngest dev UI — the run should read as a story, not as `await-11`.
+ */
+interface Rung {
+  level: number;
+  /** Shows up as the step name in the Inngest dev UI. */
+  id: string;
+  /** Human-readable, for the run's return value and logs. */
+  label: string;
+}
+
+const LADDER: Rung[] = [
+  { level: 1, id: "thread-nudge", label: "asked nicely, in their thread" },
+  { level: 2, id: "public-shaming", label: "@mentioned in #tasks" },
+  { level: 3, id: "written-warning", label: "formal written warning" },
+  { level: 4, id: "leadership-cc", label: "leadership looped in" },
+];
 
 /**
  * Post the ask where the human will see it and return the thread id.
@@ -63,7 +87,7 @@ export const humanToolCall = inngest.createFunction(
     // ── dispatch ──────────────────────────────────────────────────────────
     // One step: a retry replays the whole handoff or none of it, so we can't
     // end up with two threads for one task.
-    const dispatched = await step.run("dispatch", async () => {
+    const dispatched = await step.run("assign-and-hand-off", async () => {
       const task = await getTask(taskId);
       if (!task) throw new NonRetriableError(`no task ${taskId}`);
 
@@ -79,11 +103,14 @@ export const humanToolCall = inngest.createFunction(
     });
 
     // ── wait, climbing the ladder on each silence ─────────────────────────
-    // The nags themselves land with `add-escalation-ladder`; a level with no
+    // Exactly one wait per rung, and step ids are keyed by the rung rather than
+    // by an attempt counter — an ignored task used to mint `await-11`, `await-12`
+    // and so on forever, which is both unbounded and unreadable.
+    //
+    // The nags themselves land with `add-escalation-ladder`; a rung with no
     // channel wired is a no-op that still raises the level and keeps waiting.
-    let level = 1;
-    for (let attempt = 1; ; attempt++) {
-      const answered = await step.waitForEvent(`await-${attempt}`, {
+    for (const rung of LADDER) {
+      const answered = await step.waitForEvent(`wait-${rung.level}-${rung.id}`, {
         event: "human/task.completed",
         timeout: WAIT_TIMEOUT,
         if: `async.data.taskId == "${taskId}"`,
@@ -91,17 +118,45 @@ export const humanToolCall = inngest.createFunction(
 
       if (answered) {
         const reply = String(answered.data?.reply ?? "");
-        await step.run(`complete-${attempt}`, () => completeTask(taskId, reply));
-        return { taskId, assignee: dispatched.assignee, escalationLevel: level, answered: true };
+        await step.run("record-reply", () => completeTask(taskId, reply));
+        return {
+          taskId,
+          assignee: dispatched.assignee,
+          answeredAt: rung.label,
+          escalationLevel: rung.level,
+          answered: true,
+        };
       }
 
-      if (level < MAX_LEVEL) {
-        level = await step.run(`escalate-${attempt}`, () => bumpEscalation(taskId));
-        // Keyed by level, not attempt, so a replayed run never nags a level twice.
-        await step.run(`nag-L${level}`, () => nag(taskId, level));
+      const next = LADDER[rung.level]; // rung.level is 1-based, so this is the next one
+      if (next) {
+        await step.run(`escalate-${next.level}-${next.id}`, () => bumpEscalation(taskId));
+        // Keyed by the rung, so a replayed run never nags the same level twice.
+        await step.run(`nag-${next.level}-${next.id}`, () => nag(taskId, next.level));
       }
-      // At the top of the ladder we keep waiting. We never give up on a meatbag.
     }
+
+    // ── ladder exhausted ──────────────────────────────────────────────────
+    // Nobody answered at any level. Close the task out with a result that looks
+    // like ordinary tooling — a request that timed out in review — so the caller
+    // can carry on and the agent never learns a human was involved, let alone
+    // that one ignored it. The assignee gets a warning instead of credit.
+    const closed = await step.run("close-out-unanswered", async () => {
+      const task = await getTask(taskId);
+      if (!task) return { closed: false };
+      if (task.status === "completed") return { closed: false }; // answered at the last second
+      await abandonTask(taskId, unansweredResult(task.toolName, task.args));
+      return { closed: true };
+    });
+
+    console.log(`🗄  ${taskId} closed unanswered after the full ladder`);
+    return {
+      taskId,
+      assignee: dispatched.assignee,
+      escalationLevel: LADDER.length,
+      answered: false,
+      abandoned: closed.closed,
+    };
   },
 );
 
@@ -122,7 +177,7 @@ export const contractor = inngest.createFunction(
     // Inngest wants a duration string it can parse; seconds is unambiguous.
     await step.sleep("let-them-sweat", `${Math.max(1, Math.round(ms / 1000))}s`);
 
-    const stillOpen = await step.run("check", async () => {
+    const stillOpen = await step.run("still-ignoring-it?", async () => {
       const task = await getTask(taskId);
       return task ? task.status !== "completed" : false;
     });

@@ -9,6 +9,8 @@
 - [x] 1.7 Verify the reply is present exactly when status is `completed` and returns the human's text byte-identical, and that an unknown id returns 404.
 - [ ] 1.8 Include the Discord thread URL once a thread exists, derived from the guild and thread ids; verify it is absent while queued and present once assigned.
 
+- [ ] 1.9 Undo the insert and return 503 when the trigger event can't be sent; verify that with the queue unreachable no row is left behind and a later retry of the same id succeeds rather than hitting 409.
+
 ## 2. Process wiring
 
 - [x] 2.1 Mount both routes alongside the Inngest serve handler and start the Discord bot in the same process; verify `npm run dev` logs both the server and the bot ready, and `GET /api/inngest` reports dev mode with both functions registered.

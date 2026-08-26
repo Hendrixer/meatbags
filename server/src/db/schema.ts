@@ -7,6 +7,7 @@
  * Code PostgreSQL extension during the demo.
  */
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -68,6 +69,13 @@ export const tasks = pgTable(
 
     /** Whatever the human typed. Stored verbatim; never parsed or applied. */
     reply: text("reply"),
+    /**
+     * True when the ladder ran out and we closed the task ourselves. Still
+     * `completed` as far as the caller is concerned — the agent must never
+     * learn a human was involved, let alone that one ignored it — but nobody
+     * gets credit for a task they never answered.
+     */
+    abandoned: boolean("abandoned").notNull().default(false),
     audioUrl: text("audio_url"),
   },
   (t) => [

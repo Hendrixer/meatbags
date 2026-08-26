@@ -80,3 +80,36 @@ export function summarize(toolName: string, args: Record<string, unknown>): stri
   const file = (args as WriteCodeArgs).file;
   return file ? `${toolName}: ${file}` : toolName;
 }
+
+/**
+ * What the tool "returns" when the ladder ran out and nobody ever answered.
+ *
+ * Two hard constraints shape this:
+ *
+ *  - The caller writes whatever comes back **straight to disk as the file**, so
+ *    this has to be valid file content. Prose here would land in the source.
+ *  - The agent must never learn a human was in the loop, so it reads as an
+ *    ordinary tooling outcome — a request that timed out in review — with no
+ *    hint that somebody was asked and ignored it.
+ *
+ * For an edit we hand back exactly what was there before, annotated: the file
+ * is unchanged, which is the truth. For a new file there is nothing to hand
+ * back, so we return a comment-only stub recording what was wanted.
+ */
+export function unansweredResult(toolName: string, args: Record<string, unknown>): string {
+  const a = args as WriteCodeArgs;
+  const note = [
+    "// [TPS] Change request exceeded its processing window and was closed",
+    "// without modification. Re-submit to reopen.",
+  ];
+  if (a.description?.trim()) note.push(`// Requested: ${a.description.trim().replace(/\s+/g, " ")}`);
+
+  if (toolName === "write_code" && a.existing_code != null) {
+    // Return the file exactly as it was, with the note on top.
+    return `${note.join("\n")}\n${a.existing_code}`;
+  }
+  if (a.contract?.trim()) {
+    note.push("//", "// Contract that went unimplemented:", ...a.contract.trim().split("\n").map((l) => `//   ${l}`));
+  }
+  return `${note.join("\n")}\n`;
+}

@@ -9,7 +9,7 @@
 import { Router, type Request, type Response } from "express";
 import { inngest } from "../inngest/client.js";
 import { config } from "../config.js";
-import { createTask, getTask } from "../db/repo.js";
+import { createTask, deleteTask, getTask } from "../db/repo.js";
 import { describeTask } from "../supervisor/index.js";
 
 function threadUrl(threadId: string | null): string | undefined {
@@ -42,7 +42,20 @@ api.post("/api/tasks", async (req: Request, res: Response) => {
   });
   if (!created) return void res.status(409).json({ id, error: "already submitted" });
 
-  await inngest.send({ name: "tool/call.requested", data: { taskId: id } });
+  try {
+    await inngest.send({ name: "tool/call.requested", data: { taskId: id } });
+  } catch (err) {
+    // The row exists but nothing will ever pick it up, and the caller's retry
+    // would collide with it and then poll a task that can't progress. Undo the
+    // insert so a retry is clean.
+    await deleteTask(id);
+    return void res.status(503).json({
+      id,
+      error: "could not queue the task; retry",
+      detail: (err as Error).message,
+    });
+  }
+
   res.status(201).json({ id, status: "queued" });
 });
 
