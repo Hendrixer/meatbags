@@ -83,7 +83,7 @@ export async function runTurn(
         result = `Error: unknown tool ${call.name}`;
       } else {
         try {
-          result = await impl(args, { signal, emit });
+          result = await impl(args, { signal, emit, callId: call.id });
         } catch (err) {
           if ((err as Error).name === "AbortError") throw err;
           result = `Error: ${(err as Error).message}`;

@@ -3,7 +3,7 @@ import type OpenAI from "openai";
 import { useCallback, useRef, useState } from "react";
 import { runTurn } from "./agent.js";
 import { AGENT_CWD, MODEL, SYSTEM_PROMPT } from "./foundry.js";
-import type { MeatbagTask } from "./types.js";
+import { shortTaskId, type MeatbagTask } from "./types.js";
 import { InputBar } from "./ui/InputBar.js";
 import { StatusLine, type Phase } from "./ui/StatusLine.js";
 import { Transcript, type TranscriptEntry } from "./ui/Transcript.js";
@@ -96,7 +96,7 @@ export function App() {
                   if (done?.status === "completed") {
                     append({
                       kind: "system",
-                      text: `✓ task #${done.taskId} returned by ${done.assignee ?? "someone"} (escalation ${done.escalation_level})`,
+                      text: `✓ task #${shortTaskId(done.taskId)} returned by ${done.assignee ?? "someone"} (escalation ${done.escalation_level})`,
                     });
                   }
                 }
@@ -155,7 +155,7 @@ export function App() {
           } else {
             const lines = tasks.map(
               (t) =>
-                `#${t.taskId} ${t.file} — ${t.status} — ${t.assignee ?? "unassigned"} — escalation ${t.escalation_level}`,
+                `#${shortTaskId(t.taskId)} ${t.file} — ${t.status} — ${t.assignee ?? "unassigned"} — escalation ${t.escalation_level}`,
             );
             append({ kind: "system", text: `Provisioned tasks:\n${lines.join("\n")}` });
           }

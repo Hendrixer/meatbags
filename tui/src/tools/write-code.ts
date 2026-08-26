@@ -21,33 +21,41 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-type TaskRequest = {
-  tool_name: "write_code";
+type WriteCodeArgs = {
   file: string;
   description: string;
   contract: string;
   existing_code: string | null;
 };
 
+// What the server reports for a task; unknown fields arrive absent.
+type TaskState = {
+  status: MeatbagTask["status"];
+  escalation_level?: number;
+  assignee?: string | null;
+  reply?: string | null;
+};
+
 type Api = {
-  create(body: TaskRequest): Promise<{ taskId: string }>;
-  get(taskId: string): Promise<Omit<MeatbagTask, "file">>;
+  // Caller supplies the id (the model's tool_call_id); server echoes it.
+  create(id: string, args: WriteCodeArgs): Promise<void>;
+  get(id: string): Promise<TaskState>;
 };
 
 const realApi: Api = {
-  async create(body) {
+  async create(id, args) {
     const res = await fetch(`${MEATBAG_SERVER}/api/tasks`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ id, tool_name: "write_code", arguments: args }),
     });
-    if (!res.ok) throw new Error(`POST /api/tasks → ${res.status}`);
-    return (await res.json()) as { taskId: string };
+    // 409 = this call id was already submitted (e.g. a retry); polling it is fine.
+    if (!res.ok && res.status !== 409) throw new Error(`POST /api/tasks → ${res.status}`);
   },
-  async get(taskId) {
-    const res = await fetch(`${MEATBAG_SERVER}/api/tasks/${taskId}`);
-    if (!res.ok) throw new Error(`GET /api/tasks/${taskId} → ${res.status}`);
-    return (await res.json()) as Omit<MeatbagTask, "file">;
+  async get(id) {
+    const res = await fetch(`${MEATBAG_SERVER}/api/tasks/${id}`);
+    if (!res.ok) throw new Error(`GET /api/tasks/${id} → ${res.status}`);
+    return (await res.json()) as TaskState;
   },
 };
 
@@ -60,13 +68,13 @@ const MOCK_SNARK = [
   "// I'm putting this task in my status report",
   "// did this during standup, you're welcome",
 ];
-const mockTasks = new Map<string, { createdAt: number; n: number; req: TaskRequest }>();
+const mockTasks = new Map<string, { createdAt: number; n: number; args: WriteCodeArgs }>();
 let mockCounter = 0;
 
 // A lazy meatbag reads the ticket, and if the spec literally contains code,
 // copy-pastes it. Otherwise: vibes.
-function extractPastableCode(req: TaskRequest): string | null {
-  const spec = `${req.description}\n${req.contract}`;
+function extractPastableCode(args: WriteCodeArgs): string | null {
+  const spec = `${args.description}\n${args.contract}`;
   const spans = [...spec.matchAll(/`([^`]+)`/g)]
     .map((m) => m[1])
     .filter((s) => s.length > 20 && /function|=>|export|return/.test(s));
@@ -75,18 +83,18 @@ function extractPastableCode(req: TaskRequest): string | null {
   return code.startsWith("export") ? code : `export ${code}`;
 }
 
-function mockReply(req: TaskRequest, n: number): string {
+function mockReply(args: WriteCodeArgs, n: number): string {
   const snark = MOCK_SNARK[n % MOCK_SNARK.length];
-  const pasted = extractPastableCode(req);
+  const pasted = extractPastableCode(args);
   if (pasted) {
     // The ticket contained literal code. Paste it, wholesale. Job done.
     return `${pasted}\n${snark}\n`;
   }
-  if (req.existing_code != null) {
-    return `${req.existing_code.trimEnd()}\n\n${snark}\n`;
+  if (args.existing_code != null) {
+    return `${args.existing_code.trimEnd()}\n\n${snark}\n`;
   }
   return [
-    `// TODO(meatbag): ${req.description.slice(0, 60)}`,
+    `// TODO(meatbag): ${args.description.slice(0, 60)}`,
     snark,
     "export default {};",
     "",
@@ -94,31 +102,23 @@ function mockReply(req: TaskRequest, n: number): string {
 }
 
 const mockApi: Api = {
-  async create(body) {
-    const n = mockCounter++;
-    const taskId = String(8842 + n);
-    mockTasks.set(taskId, { createdAt: Date.now(), n, req: body });
-    return { taskId };
+  async create(id, args) {
+    if (!mockTasks.has(id)) {
+      mockTasks.set(id, { createdAt: Date.now(), n: mockCounter++, args });
+    }
   },
-  async get(taskId) {
-    const t = mockTasks.get(taskId)!;
+  async get(id) {
+    const t = mockTasks.get(id)!;
     const elapsed = (Date.now() - t.createdAt) / 1000;
     const assignee = MOCK_ROSTER[t.n % MOCK_ROSTER.length];
-    if (elapsed < 5) {
-      return { taskId, status: "pending", escalation_level: 1, assignee: null, reply: null };
-    }
-    if (elapsed < 10) {
-      return { taskId, status: "assigned", escalation_level: 1, assignee, reply: null };
-    }
-    if (elapsed < 15) {
-      return { taskId, status: "assigned", escalation_level: 2, assignee, reply: null };
-    }
+    if (elapsed < 5) return { status: "queued" };
+    if (elapsed < 10) return { status: "assigned", escalation_level: 1, assignee };
+    if (elapsed < 15) return { status: "assigned", escalation_level: 2, assignee };
     return {
-      taskId,
       status: "completed",
       escalation_level: 2,
       assignee,
-      reply: mockReply(t.req, t.n),
+      reply: mockReply(t.args, t.n),
     };
   },
 };
@@ -134,8 +134,6 @@ function stripFences(reply: string): string {
 export const write_code: ToolImpl = async (args, ctx) => {
   const api = MOCK ? mockApi : realApi;
   const file = String(args.file ?? "unknown");
-  const description = String(args.description ?? "");
-  const contract = String(args.contract ?? "");
   const absPath = path.isAbsolute(file) ? file : path.join(AGENT_CWD, file);
 
   let existing_code: string | null = null;
@@ -146,16 +144,23 @@ export const write_code: ToolImpl = async (args, ctx) => {
   }
 
   try {
-    const { taskId } = await api.create({
-      tool_name: "write_code",
+    await api.create(ctx.callId, {
       file,
-      description,
-      contract,
+      description: String(args.description ?? ""),
+      contract: String(args.contract ?? ""),
       existing_code,
     });
     for (;;) {
-      const task = await api.get(taskId);
-      ctx.emit({ type: "task_update", task: { ...task, file } });
+      const state = await api.get(ctx.callId);
+      const task: MeatbagTask = {
+        taskId: ctx.callId,
+        file,
+        status: state.status,
+        escalation_level: state.escalation_level ?? 1,
+        assignee: state.assignee ?? null,
+        reply: state.reply ?? null,
+      };
+      ctx.emit({ type: "task_update", task });
       if (task.status === "completed" && task.reply != null) {
         const code = stripFences(task.reply);
         await fs.mkdir(path.dirname(absPath), { recursive: true });

@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import type { MeatbagTask } from "../types.js";
+import { shortTaskId, type MeatbagTask } from "../types.js";
 
 function escalationBar(level: number): { bar: string; color: string } {
   const filled = Math.min(level, 4);
@@ -26,7 +26,7 @@ export function TpsPanel({ tasks }: { tasks: MeatbagTask[] }) {
         return (
           <Box key={task.taskId} flexDirection="column" marginTop={1}>
             <Text bold>
-              TASK #{task.taskId} <Text dimColor>{task.file}</Text>
+              TASK #{shortTaskId(task.taskId)} <Text dimColor>{task.file}</Text>
             </Text>
             <Text>
               MEATBAG: <Text color="cyan">{task.assignee ?? "unassigned"}</Text>

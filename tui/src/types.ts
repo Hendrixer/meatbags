@@ -1,7 +1,7 @@
 export type MeatbagTask = {
   taskId: string;
   file: string;
-  status: "pending" | "assigned" | "completed";
+  status: "queued" | "assigned" | "completed";
   escalation_level: number;
   assignee: string | null;
   reply: string | null;
@@ -19,6 +19,12 @@ export type AgentEvent =
 export type ToolCtx = {
   signal: AbortSignal;
   emit: (e: AgentEvent) => void;
+  callId: string;
 };
 
 export type ToolImpl = (args: Record<string, unknown>, ctx: ToolCtx) => Promise<string>;
+
+// Task ids are OpenAI tool_call_ids ("call_aB3…"); keep displays tidy.
+export function shortTaskId(id: string): string {
+  return id.length > 10 ? `…${id.slice(-6)}` : id;
+}
