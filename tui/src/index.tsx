@@ -1,5 +1,6 @@
 import { render } from "ink";
 import { App } from "./app.js";
+import { detectBar } from "./busybar.js";
 import { cancelOutstanding } from "./tools/write-code.js";
 
 if (!process.stdin.isTTY) {
@@ -19,6 +20,9 @@ if (missing.length) {
 // the UI renders anchored to the bottom of the terminal from the first frame.
 const rows = process.stdout.rows || 24;
 process.stdout.write("\x1b[2J\x1b[3J\x1b[H" + "\n".repeat(Math.max(0, rows - 1)));
+
+// Optional hardware: mirror task status on the Busy Bar when one's plugged in.
+await detectBar();
 
 const app = render(<App />);
 

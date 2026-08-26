@@ -2,6 +2,7 @@ import { Box, Text, useApp, useInput } from "ink";
 import type OpenAI from "openai";
 import { useCallback, useRef, useState } from "react";
 import { runTurn } from "./agent.js";
+import { barClear, barSay } from "./busybar.js";
 import { AGENT_CWD, MODEL, SYSTEM_PROMPT } from "./foundry.js";
 import { shortTaskId, type MeatbagTask } from "./types.js";
 import { InputBar } from "./ui/InputBar.js";
@@ -102,14 +103,25 @@ export function App() {
                 }
                 setPhase("thinking");
                 break;
-              case "task_update":
+              case "task_update": {
                 currentTaskIdRef.current = e.task.taskId;
                 taskLogRef.current.set(e.task.taskId, e.task);
+                // Mirror the latest TPS report on the Busy Bar, if one's plugged in.
+                const who = (e.task.assignee ?? "UNASSIGNED").toUpperCase();
+                if (e.task.status === "completed") {
+                  barSay(`TPS: ${who} DELIVERED`, "green");
+                } else if (e.task.status === "queued") {
+                  barSay("TPS: PROVISIONING A MEATBAG...", "cyan");
+                } else {
+                  const color = e.task.escalation_level >= 3 ? "red" : e.task.escalation_level === 2 ? "yellow" : "green";
+                  barSay(`TPS: ${who} · ${e.task.status.toUpperCase()} · L${e.task.escalation_level}`, color);
+                }
                 setActiveTasks((prev) => {
                   const rest = prev.filter((t) => t.taskId !== e.task.taskId);
                   return [...rest, e.task];
                 });
                 break;
+              }
               case "error":
                 append({ kind: "system", text: `⨯ ${e.message}` });
                 break;
@@ -131,6 +143,7 @@ export function App() {
         setActiveTasks((prev) => prev.filter((t) => t.status !== "completed"));
         abortRef.current = null;
         setTurnRunning(false);
+        barClear();
       }
     },
     [append],
