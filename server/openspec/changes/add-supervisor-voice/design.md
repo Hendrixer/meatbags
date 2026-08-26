@@ -40,15 +40,32 @@ Missing configuration, a network error, a timeout, and an unusable response all
 take the same path: a deterministic ask derived from the tool name and arguments,
 and a deterministic assignee. Dispatch must not be able to fail here.
 
+### The ask carries the payload, not just the instruction
+
+`tui/CONTRACT.md` applies the reply to disk verbatim, so the ask is not merely
+flavour — it is the whole brief. It has to include the interface the result must
+satisfy and, for an edit, the file's current contents, and it has to say plainly
+that the answer is the entire file. Tone is free; those elements are not.
+
+This makes asks long. Discord's message limit is a real constraint once
+`existing_code` is a full source file, so the code block may need to ride as an
+attachment rather than inline.
+
 ## Risks / Trade-offs
 
 - **Latency sits between submit and `assigned`.** → It runs inside the workflow,
-  so the TUI just sees `queued` for an extra poll or two.
+  so the TUI just sees `pending` for an extra poll or two.
 - **The model writes something less funny than a hand-written line.** → Accepted;
   the fallback text is the floor, not the ceiling.
 - **A prompt that leaks the mechanics into the ask.** → The ask is read by humans
   in Discord who already know they are the ones doing the work, so there is
   nothing to protect here. The mundane tool surface lives in the TUI.
+- **A funny ask that nobody can answer correctly.** → The reply is applied to
+  disk unreviewed, so an ask that reads well but omits the current code or the
+  required interface produces a broken file. The required elements are specified;
+  the voice wraps them.
+- **An ask longer than Discord allows.** → Post the code as an attachment when it
+  would overflow.
 
 ## Open Questions
 

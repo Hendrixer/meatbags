@@ -6,3 +6,6 @@
 - [ ] 1.4 Validate the model's choice against the roster, substituting a deterministic member when it names somebody unknown; verify a response naming a non-member still yields a real assignee.
 - [ ] 1.5 Add the deterministic fallback for missing configuration, errors, and timeouts — a plain ask derived from the tool name and arguments; verify that with Foundry unconfigured the call still returns a usable ask and a real assignee rather than throwing.
 - [ ] 1.6 Verify an unfamiliar tool name still produces an actionable ask.
+- [ ] 1.7 Include the required interface and, for an edit, the file's current contents in the ask, and demand the entire updated file back; verify an edit ask contains the current code and an explicit instruction to reply with the whole file.
+- [ ] 1.8 Verify a new-file ask says the file does not exist yet and states the interface to satisfy.
+- [ ] 1.9 Handle asks that exceed Discord's message limit by posting the code as an attachment; verify a task carrying a large `existing_code` still posts successfully.

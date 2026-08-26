@@ -49,3 +49,26 @@ A failure here SHALL NOT fail the tool call.
 #### Scenario: Falling back on error
 - **WHEN** generating the ask fails
 - **THEN** the task is still dispatched rather than failing
+
+### Requirement: The ask demands an answer the caller can use
+
+The human's reply is returned to the caller as the result and applied without
+review. The ask SHALL therefore state what form the answer must take — the
+complete contents of the file, not a summary, a diff, or an acknowledgement.
+Where the caller supplied the interface the result must satisfy, or the current
+contents of the file, the ask SHALL include them so the human can produce that
+answer.
+
+#### Scenario: An edit request carries the current code
+- **WHEN** an ask is generated for a task whose file already has contents
+- **THEN** the ask includes those contents
+- **AND** it asks for the entire updated file rather than a description of the change
+
+#### Scenario: A new-file request states the interface
+- **WHEN** an ask is generated for a task with no current file contents
+- **THEN** the ask says the file does not exist yet
+- **AND** it states the interface the new file must satisfy
+
+#### Scenario: The ask never invites an acknowledgement
+- **WHEN** any ask is generated
+- **THEN** it does not invite a reply that merely confirms the work is done

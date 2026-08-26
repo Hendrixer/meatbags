@@ -21,19 +21,21 @@ projector. The whole build is a ~4-hour budget.
 
 ## Decisions
 
-### The caller's tool call id is the primary key
+### The id is minted here, not supplied by the caller
 
 `CLAUDE.md` previously decided the Discord `thread.id` **is** the `task.id`. That
 held when the workflow started from an Inngest event. It cannot hold now: the TUI
 needs an id back synchronously from its submit call, and the thread does not
 exist until the run has picked an assignee and called Discord seconds later.
 
-Chosen: the TUI passes its model's own `tool_call_id` and it becomes `tasks.id`.
-`thread_id` is a separate unique column; the Discord bot resolves thread → task
-through it.
+Chosen: the submit route mints an opaque id, returns it, and uses it as
+`tasks.id`. `thread_id` is a separate unique column; the Discord bot resolves
+thread → task through it. `tui/CONTRACT.md` asks for exactly this — the TUI sends
+no id and treats what comes back as opaque.
 
-- *Alternative — server mints an id.* Same shape, but Brian then keeps a map from
-  his tool call ids to ours. Using his id end to end keeps his side stateless.
+- *Alternative — the TUI passes its model's `tool_call_id`.* Would keep his side
+  free of any id mapping, but he has already shipped a client that sends no id,
+  and his doc is the agreed contract.
 - *Alternative — create the thread inside the submit handler* to preserve
   `id == thread.id`. Rejected: it puts a model call and two Discord round-trips on
   the critical path of every submit, outside the workflow's retry boundary.
@@ -46,11 +48,11 @@ message to upsert speakers.
 ```
 submit               dispatch step           escalate loop      human replies
 ──────               ─────────────           ─────────────      ─────────────
-id                   agent_id                escalation_level   reply
+id (minted)          agent_id                escalation_level   reply
 tool_name            thread_id                                  completed_at
 args                 assigned_at                                status=completed
 description          status=assigned
-status=queued
+status=pending
 created_at
 ```
 
@@ -62,8 +64,9 @@ columns and response time is measured from `assigned_at`.
 
 ### Status as a constrained text column, not a database enum
 
-Three values, and adding a fourth mid-build should not require altering a type.
-The type union lives in TypeScript; the column stays text.
+Three values — `pending`, `assigned`, `completed`, named to match
+`tui/CONTRACT.md` — and adding a fourth mid-build should not require altering a
+type. The type union lives in TypeScript; the column stays text.
 
 ### `args` is stored even though `description` duplicates it
 
@@ -80,12 +83,13 @@ and the pool stays lazily constructed — importing the module must not throw wh
 
 ## Risks / Trade-offs
 
-- **`tasks.id` changes meaning and it is the seam with Brian's half.** → Sign-off
-  before implementation; the change is recorded in the proposal as BREAKING.
+- **`tasks.id` changes meaning and it is the seam with Brian's half.** →
+  Reconciled against `tui/CONTRACT.md`; the change is recorded in the proposal as
+  BREAKING.
 - **Push will want to drop and recreate `tasks`.** → Test rows are disposable.
   Let it.
 - **A wrong thread lookup would complete the wrong task.** → `thread_id` carries a
-  unique constraint, and is nullable so a queued task matches nothing.
+  unique constraint, and is nullable so a pending task matches nothing.
 - **Stat updates race if a human answers two tasks at once.** → Counter updates
   are single statements; exact ordering does not matter for a leaderboard.
 
