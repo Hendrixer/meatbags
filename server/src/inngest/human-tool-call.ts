@@ -132,7 +132,17 @@ export const humanToolCall = inngest.createFunction(
       if (next) {
         await step.run(`escalate-${next.level}-${next.id}`, () => bumpEscalation(taskId));
         // Keyed by the rung, so a replayed run never nags the same level twice.
-        await step.run(`nag-${next.level}-${next.id}`, () => nag(taskId, next.level));
+        // A nag that throws must not fail the step: Inngest would retry it
+        // forever, the ladder would never reach its end, and the caller would
+        // poll a task that can never finish.
+        await step.run(`nag-${next.level}-${next.id}`, async () => {
+          try {
+            return await nag(taskId, next.level);
+          } catch (err) {
+            console.warn(`nag L${next.level} failed: ${(err as Error).message}`);
+            return `level ${next.level}: nag failed (${(err as Error).message})`;
+          }
+        });
       }
     }
 

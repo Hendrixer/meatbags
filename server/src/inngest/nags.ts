@@ -19,6 +19,9 @@ function threadUrl(threadId: string | null): string {
 export async function nag(taskId: string, level: number): Promise<string> {
   const task = await getTask(taskId);
   if (!task) return `no task ${taskId}`;
+  // A rung whose channel isn't wired is a no-op that still lets the ladder
+  // climb — never an error that stalls the run.
+  if (level === 2 && !config.discord.botToken) return "level 2: no Discord bot, skipped";
   const who = task.assigneeName ?? "resource";
   const what = task.description;
   const file = String((task.args as { file?: unknown })?.file ?? "the task");
@@ -47,7 +50,14 @@ export async function nag(taskId: string, level: number): Promise<string> {
       : (await mentionVoice(who, file)) ??
         `Just circling back on "${subjectWhat}" — I'm not seeing a reply in the thread yet. ` +
           `Not a big deal, just, you know. It's been a while. Mmkay?`;
-    await publicMention({ discordId: task.agentId }, text, audio);
+    try {
+      await publicMention({ discordId: task.agentId }, text, audio);
+    } catch (err) {
+      // Same reasoning as the best-effort renders above: the shaming failing
+      // must not stall the ladder, or the caller waits forever.
+      console.warn(`level 2 public mention failed: ${(err as Error).message}`);
+      return `level 2: mention failed (${(err as Error).message})`;
+    }
     return `level 2: ${audio ? "voicemail-only mention" : "text mention"} posted`;
   }
 
