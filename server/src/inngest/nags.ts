@@ -100,9 +100,9 @@ export async function nag(taskId: string, level: number): Promise<string> {
             body:
               `${who},\n\n` +
               `This is a formal notice regarding the outstanding task:\n\n    ${what}\n\n` +
-              `Per the memo, all provisioned tasks require a response in their thread ` +
-              `(${where}). This is also a reminder that we're using the new cover sheets ` +
-              `on all TPS reports now. Did you get that memo?\n\n` +
+              `Per the process doc, all provisioned tasks require a response in their ` +
+              `thread (${where}). Separately, your compliance training module shows ` +
+              `as overdue; unrelated, but it paints a picture.\n\n` +
               `Going forward, please respond promptly.\n\n` +
               `— HR, Task Provisioning System`,
           }

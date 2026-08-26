@@ -4,8 +4,8 @@ import { config } from "../config.js";
 const VOICE = "ash";
 const DELIVERY =
   "Speak like a passive-aggressive middle manager leaving a voicemail: slow, " +
-  "unhurried, faux-friendly, slightly condescending, with drawn-out 'yeaaah's " +
-  "and thoughtful pauses. Office Space energy.";
+  "unhurried, faux-friendly, slightly condescending, with thoughtful pauses " +
+  "and the occasional weary exhale. Corporate but personal.";
 
 /** Level 3+: the mask slips. */
 export const ANGRY_DELIVERY =

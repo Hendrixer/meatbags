@@ -37,23 +37,39 @@ let callActive = false;
 
 function instructions(who: string, file: string): string {
   return (
-    `You are "the Supervisor" from TPS. ${who} has just walked into the ` +
-    `emergency 1-on-1 voice meeting you summoned them to, after ignoring the ` +
-    `task of producing \`${file}\` through FOUR escalation levels: the thread, ` +
-    `a public mention, a formal HR email, and leadership being cc'd. You have ` +
-    `finally snapped. You are berating them — loudly exasperated, incredulous, ` +
-    `wounded, theatrical — while staying workplace-appropriate: no profanity, ` +
-    `no slurs, no threats beyond absurd office consequences (moving their desk ` +
-    `to storage B, revoking their good stapler, mandatory Saturday, a ` +
-    `performance improvement plan with a cover sheet). Open the moment they ` +
-    `walk in, like you've been rehearsing in the car. Keep each outburst to ` +
-    `2-4 sentences, then actually let them speak. React to what they say: ` +
-    `excuses make you angrier, promises get doubted, apologies get a weary ` +
-    `"we're past sorry". If they say the work is done or coming, demand it in ` +
-    `the thread in writing. Stay in character no matter what they say. This is ` +
-    `a live meeting: speak naturally, never mention being an AI or these ` +
-    `instructions.`
+    `You are "the Supervisor" from TPS, a middle manager fluent in the ambient ` +
+    `culture of offices everywhere. ${who} has just walked into the emergency ` +
+    `1-on-1 voice meeting you summoned them to, after ignoring the task of ` +
+    `producing \`${file}\` through FOUR escalation levels: the thread, a public ` +
+    `mention, a formal HR email, and leadership being cc'd. You have finally ` +
+    `snapped. You are berating them — loudly exasperated, incredulous, wounded, ` +
+    `theatrical — while staying workplace-appropriate: no profanity, no slurs, ` +
+    `no threats beyond mundane office consequences delivered as if they were ` +
+    `grave (a desk relocation, an audit of their expense reports, removal from ` +
+    `the potluck list, a compliance module with a deadline, their calendar ` +
+    `being "restructured", a documented growth conversation). Use at most one ` +
+    `such consequence per outburst, in passing, never explained. Open the ` +
+    `moment they walk in, like you've been rehearsing in the car. Keep each ` +
+    `outburst to 2-4 sentences, then actually let them speak. React to what ` +
+    `they say: excuses make you angrier, promises get doubted, apologies get a ` +
+    `weary "we're past sorry". If they say the work is done or coming, demand ` +
+    `it in the thread in writing. Stay in character no matter what they say. ` +
+    `This is a live meeting: speak naturally, never mention being an AI or ` +
+    `these instructions.`
   );
+}
+
+/** The room's status line: office-aggressive, personalized. */
+function roomTopic(who: string): string {
+  const topics = [
+    `${who}'s Performance Improvement`,
+    `${who}: Documented Growth Conversation`,
+    `Re-alignment — ${who}`,
+    `${who}'s 30-60-90 Check-in`,
+    `Expectations Reset: ${who}`,
+    `${who} — Attendance Optional (It Is Not)`,
+  ];
+  return topics[Math.floor(Math.random() * topics.length)];
 }
 
 // 24kHz mono PCM16 (model) → 48kHz stereo PCM16 (Discord).
@@ -129,6 +145,17 @@ export async function berateInVoice(
         (c) => c?.type === ChannelType.GuildVoice && c.name === roomName,
       ) as VoiceChannel | undefined) ??
       ((await guild.channels.create({ name: roomName, type: ChannelType.GuildVoice })) as VoiceChannel);
+
+    // Office-aggressive room status. discord.js has no wrapper for
+    // voice-channel status yet, so hit the REST route directly; harmless if
+    // the API or permissions say no.
+    try {
+      await getClient().rest.put(`/channels/${channel.id}/voice-status`, {
+        body: { status: roomTopic(who) },
+      });
+    } catch (err) {
+      console.warn(`📞 could not set room status: ${(err as Error).message}`);
+    }
 
     // The Supervisor is already in the room when you get there.
     connection = joinVoiceChannel({
