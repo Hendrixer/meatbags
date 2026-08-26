@@ -150,8 +150,19 @@ export const write_code: ToolImpl = async (args, ctx) => {
       contract: String(args.contract ?? ""),
       existing_code,
     });
+    let failedPolls = 0;
     for (;;) {
-      const state = await api.get(ctx.callId);
+      let state: TaskState;
+      try {
+        state = await api.get(ctx.callId);
+        failedPolls = 0;
+      } catch (err) {
+        // Transient server blips (restarts, redeploys) shouldn't kill a wait
+        // that's already survived four escalation levels.
+        if ((err as Error).name === "AbortError" || ++failedPolls > 10) throw err;
+        await sleep(POLL_MS, ctx.signal);
+        continue;
+      }
       const task: MeatbagTask = {
         taskId: ctx.callId,
         file,

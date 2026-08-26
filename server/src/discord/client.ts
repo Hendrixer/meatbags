@@ -54,6 +54,13 @@ export async function startBot(): Promise<void> {
           data: { taskId: task.id, reply: routed.reply },
         });
         console.log(`↩ reply in thread ${routed.threadId} → human/task.completed for ${task.id}`);
+        // The reply is the completion — sign off and fold the thread. (A later
+        // human message would auto-unarchive, but lands in the completed-task
+        // guard above and goes nowhere.)
+        if (msg.channel.isThread()) {
+          await msg.channel.send("Terrific. Closing this one out. Mmkay.");
+          await msg.channel.setArchived(true);
+        }
       } else if (routed.kind === "general-speak") {
         await upsertAgent({ discordId: routed.discordId, name: routed.name });
         console.log(`👋 roster upsert: ${routed.name} (${routed.discordId})`);
