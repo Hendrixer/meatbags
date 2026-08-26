@@ -7,9 +7,9 @@
  */
 import { config } from "../config.js";
 import { getTask } from "../db/repo.js";
-import { hrNote, publicMention } from "../discord/index.js";
+import { hrNote, nagInThread, publicMention } from "../discord/index.js";
 import { emailVoice, hrNoteVoice, mentionVoice, voicemailVoice } from "../supervisor/index.js";
-import { renderVoicemail, sendEmail } from "../services/index.js";
+import { ANGRY_DELIVERY, renderVoicemail, sendEmail } from "../services/index.js";
 
 function threadUrl(threadId: string | null): string {
   if (!threadId || !config.discord.guildId) return "(thread link unavailable)";
@@ -49,6 +49,22 @@ export async function nag(taskId: string, level: number): Promise<string> {
   }
 
   if (level >= 3) {
+    // Level 3 also leaves the angry voicemail in the thread — the moment the
+    // supervisor's patience audibly runs out. Best effort, like the HR note.
+    if (level === 3 && task.threadId) {
+      try {
+        const script =
+          (await voicemailVoice(who, file, 3)) ??
+          `${who}. It's me. Again. I have asked, several times now, about ${file}. ` +
+            `Several. Times. So we're going to need that today. ...Thanks so much.`;
+        const audio = await renderVoicemail(script, ANGRY_DELIVERY);
+        if (audio) {
+          await nagInThread(task.threadId, "You have one (1) new voicemail. The tone is noted.", audio);
+        }
+      } catch (err) {
+        console.warn(`level 3 voicemail skipped: ${(err as Error).message}`);
+      }
+    }
     // Level 3 also opens a file on them in #hr. Best effort — the email is the
     // nag of record; the note is for the record.
     if (level === 3) {

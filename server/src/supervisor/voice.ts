@@ -85,16 +85,24 @@ export async function askVoice(who: string, file: string): Promise<AskVoice | un
   return parsed?.intro && parsed?.outro ? parsed : undefined;
 }
 
-/** A spoken voicemail script, written for the ear. */
+/** A spoken voicemail script, written for the ear. At level 3+ the mask slips. */
 export async function voicemailVoice(
   who: string,
   file: string,
   level: number,
 ): Promise<string | undefined> {
+  const temper =
+    level >= 3
+      ? `Your patience has run out and it shows: clipped sentences, real ` +
+        `frustration breaking through, maybe a raised phrase you immediately ` +
+        `walk back to strained politeness. You may reference how many times ` +
+        `you've asked. Still no profanity, still no threats — just a manager ` +
+        `who is DONE.`
+      : "";
   return complete(
     PERSONA,
     `Write a voicemail you are leaving for ${who} about the file \`${file}\`. ` +
-      `Escalation level ${level}. Spoken language, written for the ear — short ` +
+      `Escalation level ${level}. ${temper} Spoken language, written for the ear — short ` +
       `sentences, natural pauses with commas and ellipses, under 10 seconds ` +
       `read aloud (about 30 words). ${opening()}. Optionally ${flavor()}. ` +
       `Return only the spoken words, no quotes, no stage directions.`,
