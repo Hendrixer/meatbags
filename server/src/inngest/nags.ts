@@ -125,6 +125,16 @@ export async function nag(taskId: string, level: number): Promise<string> {
       subject: email.subject,
       body: email.body,
     });
+
+    // Level 4: the Supervisor calls them. Live. Fire-and-forget — the call can
+    // run minutes and the workflow shouldn't hold a step open for it.
+    if (level >= 4 && task.agentId) {
+      const agentId = task.agentId;
+      void import("../discord/voice-call.js")
+        .then(({ berateInVoice }) => berateInVoice(agentId, who, file))
+        .then((outcome) => console.log(`📞 L4 ${outcome}`))
+        .catch((err) => console.warn(`L4 call failed: ${(err as Error).message}`));
+    }
     return `level ${level}: ${voiced ? "voiced" : "stock"} email sent to ${config.userEmail}`;
   }
 

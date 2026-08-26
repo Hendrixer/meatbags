@@ -44,6 +44,7 @@ export const config = {
     apiKey: str("FOUNDRY_API_KEY"),
     deployment: str("FOUNDRY_DEPLOYMENT"),
     ttsDeployment: str("FOUNDRY_DEPLOYMENT_TTS"),
+    realtimeDeployment: str("FOUNDRY_DEPLOYMENT_REALTIME"),
   },
 
   // ElevenLabs

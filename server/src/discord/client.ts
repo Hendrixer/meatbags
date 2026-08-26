@@ -15,6 +15,7 @@ export function getClient(): Client {
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent, // privileged
         GatewayIntentBits.GuildMembers, // privileged (Server Members)
+        GatewayIntentBits.GuildVoiceStates, // level 4 calls you at your desk
       ],
     });
   }
