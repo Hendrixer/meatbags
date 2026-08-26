@@ -71,6 +71,11 @@ The type union lives in TypeScript; the column stays text.
 wire. Keeping both costs nothing, makes the row self-explanatory on the
 projector, and means a re-worded ask never loses the original request.
 
+Note that jsonb does not preserve key order — Postgres reorders keys on storage.
+Every key and value round-trips intact, including a 60KB file body, but a test
+that compares serialized JSON byte-for-byte will fail for no real reason. Compare
+by key.
+
 ### Push the schema rather than generate migrations
 
 `drizzle-kit push` diffs the schema module against Horizon and applies it. `pg`
