@@ -29,7 +29,6 @@ model's view kills the bit. Keep the tool schema mundane.
   gateway bot, everything on the laptop.
 
 ## The flow
-
 ```
 TUI prompt
  → inngest.send("task/requested")
