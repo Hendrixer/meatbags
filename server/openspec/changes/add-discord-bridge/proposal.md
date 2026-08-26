@@ -37,8 +37,8 @@ None — no specs exist yet.
 - **Modified**: `src/discord/client.ts` (both message-handler branches are
   currently `TODO` stubs), `src/discord/tasks.ts`, `src/discord/routing.ts`
   (already renamed to classify a *thread reply* rather than a task completion).
-- **Depends on**: `add-persistence-layer` for the thread → task lookup and the
-  roster upsert.
+- **Depends on**: persistence for the thread → task lookup and the roster
+  upsert — **shipped**; see `openspec/specs/persistence/spec.md`.
 - **Consumed by**: `add-tool-call-workflow` (dispatch) and
   `add-escalation-ladder` (nagging).
 - **Risk**: this is the highest-consequence piece in the rebuild. A broken

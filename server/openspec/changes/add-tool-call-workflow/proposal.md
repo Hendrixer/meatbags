@@ -33,7 +33,8 @@ None — no specs exist yet.
 
 - **New**: the workflow function in `src/inngest/`, registered alongside the
   existing `bobs` stub.
-- **Depends on**: `add-persistence-layer` (task lifecycle),
+- **Depends on**: persistence (task lifecycle) — **shipped**, see
+  `openspec/specs/persistence/spec.md`;
   `add-supervisor-voice` (ask and assignee), `add-discord-bridge` (thread
   creation, and the inbound signal that resumes the wait).
 - **Extended by**: `add-escalation-ladder`, which wraps the wait.

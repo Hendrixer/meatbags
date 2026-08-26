@@ -166,9 +166,12 @@ npx --ignore-scripts=false inngest-cli@latest dev -u http://localhost:3000/api/i
 # dashboard: http://localhost:8288
 ```
 
-Planning lives in `openspec/changes/` — one change per capability, built in
-order: `add-persistence-layer` → `add-supervisor-voice` + `add-discord-bridge` →
-`add-tool-call-workflow` → `add-escalation-ladder` → `add-tool-call-api`.
+Planning lives in `openspec/changes/`, one change per capability. Shipped
+behaviour graduates to `openspec/specs/` — read that first, it's what's true.
+
+Build order: ~~`add-persistence-layer`~~ (shipped) → `add-supervisor-voice` +
+`add-discord-bridge` → `add-tool-call-workflow` → `add-escalation-ladder` →
+`add-tool-call-api`.
 
 `INNGEST_DEV=1` must reach the client (it's in `.env`, loaded via `--env-file`);
 without it the client falls back to cloud mode and `/api/inngest` 500s. Kill stale

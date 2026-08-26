@@ -42,5 +42,6 @@ None — no specs exist yet.
 - **New**: `src/supervisor/`.
 - **Dependencies**: uses the Azure AI Foundry SDK already in `package.json` and
   the `FOUNDRY_*` keys already in `.env.example`. No new dependencies.
-- **Depends on**: `add-persistence-layer` for the roster.
+- **Depends on**: persistence for the roster — **shipped**; see
+  `openspec/specs/persistence/spec.md`.
 - **Consumed by**: `add-tool-call-workflow`, in its dispatch step.

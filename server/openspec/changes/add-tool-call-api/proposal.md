@@ -38,8 +38,9 @@ None — no specs exist yet.
 ## Impact
 
 - **New**: `src/api/`; `index.ts` gains the routes.
-- **Depends on**: `add-persistence-layer` (both routes read and write the task
-  record) and `add-tool-call-workflow` (submission starts a run).
+- **Depends on**: persistence (both routes read and write the task record) —
+  **shipped**, see `openspec/specs/persistence/spec.md`; and
+  `add-tool-call-workflow` (submission starts a run).
 - **Contract**: `tui/CONTRACT.md`. The TUI defaults to
   `MEATBAG_SERVER=http://localhost:3000`, matching this server's port, and has a
   `MEATBAG_MOCK=1` in-process fake for working without us.
