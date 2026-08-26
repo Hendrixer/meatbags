@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TPS Human Resources — Oversight</title>
+<style>
+  :root {
+    --paper: #F1ECE1;
+    --card: #FBF8F1;
+    --ink: #35302A;
+    --dim: #7A7061;
+    --rule: #D8CFBD;
+    --stamp: #8E2A23;
+    --ok: #396F41;
+    --warn: #9A6A1B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Tahoma, Verdana, system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 32px 20px 64px;
+  }
+  .wrap { max-width: 1140px; margin: 0 auto; }
+
+  header.memo {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-top: 6px double var(--ink);
+    padding: 20px 26px;
+    margin-bottom: 26px;
+    position: relative;
+  }
+  .memo h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 26px;
+    margin: 0 0 10px;
+    letter-spacing: .01em;
+  }
+  .memo .fields { display: grid; grid-template-columns: 70px 1fr; gap: 2px 10px; font-size: 13px; }
+  .memo .fields dt { color: var(--dim); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: .08em; }
+  .memo .fields dd { margin: 0; }
+  .stamp {
+    position: absolute; right: 24px; top: 22px;
+    border: 3px solid var(--stamp); color: var(--stamp);
+    font-family: Georgia, serif; font-weight: 700; font-size: 15px; letter-spacing: .18em;
+    padding: 6px 14px; transform: rotate(-7deg); text-transform: uppercase;
+    opacity: .85;
+  }
+  .asof { color: var(--dim); font-size: 12px; margin-top: 8px; }
+  .asof .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 5px; }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  section.panel { background: var(--card); border: 1px solid var(--rule); }
+  .panel h2 {
+    font-family: Georgia, serif; font-size: 16px; margin: 0;
+    padding: 12px 18px; border-bottom: 1px solid var(--rule);
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .panel h2 .count { color: var(--dim); font-size: 12px; font-family: Tahoma, Verdana, sans-serif; }
+  .panel .scroll { overflow-x: auto; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th {
+    text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--dim); padding: 8px 12px; border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .file { font-family: "Courier New", monospace; font-weight: 700; white-space: nowrap; }
+  .who { white-space: nowrap; }
+  .muted { color: var(--dim); }
+
+  .chip {
+    display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; padding: 2px 8px; border-radius: 3px; border: 1px solid;
+  }
+  .chip.queued   { color: var(--dim);  border-color: var(--rule); background: #EFE9DC; }
+  .chip.assigned { color: var(--warn); border-color: #D9C79C;   background: #F6EED9; }
+
+  .meter { display: inline-flex; gap: 2px; vertical-align: middle; }
+  .meter i { width: 13px; height: 13px; border: 1px solid var(--rule); background: #EDE7D9; }
+  .meter i.on-1 { background: var(--ok); border-color: var(--ok); }
+  .meter i.on-2 { background: var(--warn); border-color: var(--warn); }
+  .meter i.on-3, .meter i.on-4 { background: var(--stamp); border-color: var(--stamp); }
+  .lvl { font-size: 11px; color: var(--dim); margin-left: 6px; }
+  td.waiting.hot { color: var(--stamp); font-weight: 700; }
+
+  .rank { font-family: Georgia, serif; font-weight: 700; width: 30px; }
+  .standing { font-size: 11.5px; color: var(--dim); font-style: italic; }
+  .incidents-yes { color: var(--stamp); font-weight: 700; }
+  .flair { color: var(--ok); font-weight: 700; }
+
+  .recent { margin-top: 22px; }
+  .recent ul { list-style: none; margin: 0; padding: 6px 0; }
+  .recent li { padding: 7px 18px; border-bottom: 1px dashed var(--rule); font-size: 13px; }
+  .recent li:last-child { border-bottom: none; }
+
+  .empty { padding: 26px 18px; color: var(--dim); font-style: italic; }
+  a { color: inherit; }
+  footer { margin-top: 30px; color: var(--dim); font-size: 11.5px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="memo">
+    <div class="stamp">Confidential</div>
+    <h1>Human Resources — Task Provisioning Oversight</h1>
+    <dl class="fields">
+      <dt>From</dt><dd>HR, Task Provisioning System</dd>
+      <dt>To</dt><dd>Whom it concerns (it concerns you)</dd>
+      <dt>Re</dt><dd>Ongoing observation of task responsiveness. This is not a disciplinary document. Yet.</dd>
+    </dl>
+    <div class="asof"><span class="dot"></span>Live · as of <span id="asof">—</span></div>
+  </header>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>Tasks in flight <span class="count" id="flight-count"></span></h2>
+      <div class="scroll">
+        <table id="flight">
+          <thead><tr>
+            <th>File</th><th>Meatbag</th><th>Status</th><th>Escalation</th><th class="num">Waiting</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="empty" id="flight-empty" hidden>Nothing in flight. The team calls this "caught up". HR calls it "capacity".</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Leaderboard <span class="count">completion vs. incidents</span></h2>
+      <div class="scroll">
+        <table id="board">
+          <thead><tr>
+            <th></th><th>Name</th><th class="num">Done</th><th class="num">Clean</th><th class="num">HR files</th><th class="num">Avg resp.</th><th class="num">Flair</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel recent">
+    <h2>Recently closed</h2>
+    <ul id="recent"></ul>
+    <div class="empty" id="recent-empty" hidden>No closures on record. Interesting.</div>
+  </section>
+
+  <footer>TPS Oversight refreshes every 2 seconds. Participation in break-room birthday cake is not a substitute for status communication.</footer>
+</div>
+
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function dur(secs) {
+    if (secs == null) return "—";
+    const s = Math.max(0, Number(secs));
+    if (s < 90) return `${s}s`;
+    if (s < 3600) return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+    return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+  }
+
+  function meter(level) {
+    const l = Number(level) || 1;
+    let cells = "";
+    for (let i = 1; i <= 4; i++) cells += `<i class="${i <= l ? "on-" + l : ""}"></i>`;
+    return `<span class="meter">${cells}</span><span class="lvl">L${l}</span>`;
+  }
+
+  function standing(r) {
+    const done = +r.completed, inc = +r.incidents, clean = +r.clean, open = +r.open;
+    if (inc > 0) return "File open with HR";
+    if (done > 0 && clean === done && done >= 3) return "Employee of the Month material";
+    if (done > 0 && clean === done) return "Spotless record";
+    if (open > 0) return "Currently avoiding eye contact";
+    if (done === 0) return "Contributes in other ways";
+    return "Meets expectations";
+  }
+
+  async function refresh() {
+    let data;
+    try {
+      data = await (await fetch("/hr/data")).json();
+    } catch { return; }
+
+    document.getElementById("asof").textContent = new Date().toLocaleTimeString();
+
+    const flight = document.querySelector("#flight tbody");
+    document.getElementById("flight-count").textContent = `${data.inFlight.length} open`;
+    document.getElementById("flight-empty").hidden = data.inFlight.length > 0;
+    flight.innerHTML = data.inFlight.map((t) => `
+      <tr>
+        <td class="file">${esc(t.file)}</td>
+        <td class="who">${esc(t.who)}</td>
+        <td><span class="chip ${esc(t.status)}">${esc(t.status)}</span></td>
+        <td>${meter(t.level)}</td>
+        <td class="num waiting ${t.level >= 3 ? "hot" : ""}">${dur(t.waiting_secs)}</td>
+        <td>${t.thread && data.guildId ? `<a href="https://discord.com/channels/${data.guildId}/${esc(t.thread)}" target="_blank" class="muted">thread</a>` : ""}</td>
+      </tr>`).join("");
+
+    const board = document.querySelector("#board tbody");
+    const medal = (i) => (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`);
+    board.innerHTML = data.leaderboard.map((r, i) => `
+      <tr>
+        <td class="rank">${medal(i)}</td>
+        <td><div>${esc(r.name)}</div><div class="standing">${standing(r)}</div></td>
+        <td class="num">${r.completed}</td>
+        <td class="num">${r.clean}</td>
+        <td class="num ${+r.incidents > 0 ? "incidents-yes" : ""}">${r.incidents}</td>
+        <td class="num">${+r.completed > 0 ? dur(r.avg_secs) : "—"}</td>
+        <td class="num flair">${r.flair}</td>
+      </tr>`).join("");
+
+    const recent = document.getElementById("recent");
+    document.getElementById("recent-empty").hidden = data.recent.length > 0;
+    recent.innerHTML = data.recent.map((t) => `
+      <li><span class="file">${esc(t.file)}</span> closed by <b>${esc(t.who)}</b>
+        <span class="muted">· reached L${t.level} · ${dur(t.ago_secs)} ago</span></li>`).join("");
+  }
+
+  refresh();
+  setInterval(refresh, 2000);
+</script>
+</body>
+</html>
