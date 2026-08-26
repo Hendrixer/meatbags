@@ -3,12 +3,16 @@ import { serve } from "inngest/express";
 import { inngest, functions } from "./src/inngest/index.js";
 import { startBot } from "./src/discord/index.js";
 import { config } from "./src/config.js";
+import { api } from "./src/api/routes.js";
 
 const app = express();
 app.use(express.json());
 
 // Serve the Inngest functions for the dev server.
 app.use("/api/inngest", serve({ client: inngest, functions }));
+
+// The TUI-facing routes: submit a tool call, poll for the human's answer.
+app.use(api);
 
 app.listen(config.port, () => {
   console.log(`Server running on http://localhost:${config.port}`);

@@ -62,6 +62,9 @@ export const config = {
 
   // Demo insurance: contractor auto-replies after this many ms (unset = off)
   contractorAutoreplyMs: num("CONTRACTOR_AUTOREPLY_MS"),
+
+  // How long each escalation level waits before the ladder climbs.
+  waitTimeout: str("WAIT_TIMEOUT") ?? "2m",
 } as const;
 
 /** Throw a clear error if a required value is missing at the point of use. */

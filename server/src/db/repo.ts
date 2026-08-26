@@ -21,16 +21,21 @@ export interface TaskWithAssignee extends Task {
 // ─── Tasks ──────────────────────────────────────────────────────────────────
 
 /**
- * Record a submitted tool call. The id is the caller's — the model's own
- * `tool_call_id` — so a resubmit collides here rather than creating a twin.
- * Throws on a duplicate; the route turns that into a 409.
+ * Record a submitted tool call, returning undefined if that id is already
+ * taken. The id is the caller's — the model's own `tool_call_id` — so a TUI
+ * retry lands here rather than creating a twin.
+ *
+ * `onConflictDoNothing` rather than catching a unique violation: it says
+ * "leave the existing row alone" in one statement, with no check-then-insert
+ * race. A retried submit that reset a live task would silently destroy a
+ * human's answer.
  */
 export async function createTask(input: {
   id: string;
   toolName: string;
   args: Record<string, unknown>;
   description: string;
-}): Promise<Task> {
+}): Promise<Task | undefined> {
   const [row] = await getDb()
     .insert(tasks)
     .values({
@@ -39,6 +44,7 @@ export async function createTask(input: {
       args: input.args,
       description: input.description,
     })
+    .onConflictDoNothing()
     .returning();
   return row;
 }
