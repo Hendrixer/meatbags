@@ -1,16 +1,6 @@
-import { Inngest } from "inngest";
+import { bobs } from "./bobs.js";
 
-// Create a client to send and receive events
-export const inngest = new Inngest({ id: "my-app" });
+export { inngest } from "./client.js";
 
-// Your first function: triggered by the "test/hello.world" event
-const helloWorld = inngest.createFunction(
-  { id: "hello-world", triggers: [{ event: "test/hello.world" }] },
-  async ({ event, step }) => {
-    await step.sleep("wait-a-moment", "1s");
-    return { message: `Hello ${event.data.email}!` };
-  },
-);
-
-// Every function must be added to this array so Inngest can serve it
-export const functions = [helloWorld];
+/** Every function Inngest serves. Add new functions here. */
+export const functions = [bobs];

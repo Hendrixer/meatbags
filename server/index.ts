@@ -1,26 +1,24 @@
 import express from "express";
 import { serve } from "inngest/express";
 import { inngest, functions } from "./src/inngest/index.js";
+import { startBot } from "./src/discord/index.js";
+import { config } from "./src/config.js";
 
 const app = express();
-
-// Important: JSON middleware is required to process incoming JSON POST payloads.
 app.use(express.json());
 
-// Serve the Inngest functions at the recommended /api/inngest endpoint
+// Serve the Inngest functions for the dev server.
 app.use("/api/inngest", serve({ client: inngest, functions }));
 
-// Example route that sends an event to trigger the hello-world function
-app.get("/api/hello", async (req, res, next) => {
-  await inngest
-    .send({
-      name: "test/hello.world",
-      data: { email: "testUser@example.com" },
-    })
-    .catch(next);
-  res.json({ message: "Event sent!" });
-});
+app.listen(config.port, () => {
+  console.log(`Server running on http://localhost:${config.port}`);
+  console.log(`Inngest endpoint: http://localhost:${config.port}/api/inngest`);
 
-app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
+  // Start the Discord gateway bot if configured; otherwise boot without it so
+  // the server still runs (the serve endpoint doesn't need Discord).
+  if (config.discord.botToken) {
+    startBot().catch((err) => console.error("bot failed to start:", err.message));
+  } else {
+    console.log("⚠️  DISCORD_BOT_TOKEN unset — Discord bot not started (see .env.example)");
+  }
 });

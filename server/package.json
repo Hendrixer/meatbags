@@ -7,18 +7,30 @@
   "scripts": {
     "dev": "tsx watch --env-file=.env ./index.ts",
     "start": "tsx --env-file=.env ./index.ts",
+    "db:push": "drizzle-kit push",
+    "db:seed": "tsx --env-file=.env ./src/db/seed.ts",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@azure-rest/ai-inference": "^1.0.0-beta.6",
+    "@azure/core-auth": "^1.11.0",
+    "@elevenlabs/elevenlabs-js": "^2.65.0",
+    "discord.js": "^14.27.0",
+    "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
-    "inngest": "^4.18.1"
+    "inngest": "^4.18.1",
+    "pg": "^8.23.0",
+    "resend": "^6.24.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.3.0",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.10",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   }
