@@ -7,8 +7,8 @@
  */
 import { config } from "../config.js";
 import { getTask } from "../db/repo.js";
-import { publicMention } from "../discord/index.js";
-import { emailVoice, mentionVoice, voicemailVoice } from "../supervisor/index.js";
+import { hrNote, publicMention } from "../discord/index.js";
+import { emailVoice, hrNoteVoice, mentionVoice, voicemailVoice } from "../supervisor/index.js";
 import { renderVoicemail, sendEmail } from "../services/index.js";
 
 function threadUrl(threadId: string | null): string {
@@ -49,6 +49,19 @@ export async function nag(taskId: string, level: number): Promise<string> {
   }
 
   if (level >= 3) {
+    // Level 3 also opens a file on them in #hr. Best effort — the email is the
+    // nag of record; the note is for the record.
+    if (level === 3) {
+      try {
+        const note =
+          (await hrNoteVoice(who, file)) ??
+          `Note for the file: ${who} has been unresponsive regarding \`${file}\` despite ` +
+            `multiple supportive check-ins. No concerns at this time. We are simply noting it.`;
+        await hrNote(note);
+      } catch (err) {
+        console.warn(`level 3 HR note skipped: ${(err as Error).message}`);
+      }
+    }
     if (!config.userEmail) return `level ${level}: USER_EMAIL unset, skipped`;
     const voiced = await emailVoice(who, file, level, where);
     const fallback =

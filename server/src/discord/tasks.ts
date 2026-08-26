@@ -58,6 +58,16 @@ export async function nagInThread(
   }
 }
 
+/** Post a note to the HR channel (escalation level 3: the permanent record). */
+export async function hrNote(text: string): Promise<void> {
+  const id = require_(config.discord.hrChannelId, "DISCORD_HR_CHANNEL_ID");
+  const channel = await getClient().channels.fetch(id);
+  if (!channel || channel.type !== ChannelType.GuildText) {
+    throw new Error(`DISCORD_HR_CHANNEL_ID ${id} is not a text channel`);
+  }
+  await channel.send(text);
+}
+
 /** Escalation level 2: public @mention in #tasks (not the thread), with an optional voicemail. */
 export async function publicMention(
   assignee: Pick<Assignee, "discordId">,

@@ -5,7 +5,7 @@ import { describeTask, summarize } from "./describe.js";
 import { askVoice } from "./voice.js";
 
 export { describeTask, summarize };
-export { voicemailVoice, mentionVoice, emailVoice } from "./voice.js";
+export { voicemailVoice, mentionVoice, emailVoice, hrNoteVoice } from "./voice.js";
 
 export interface Assignment {
   assignee: Pick<Agent, "discordId" | "name">;

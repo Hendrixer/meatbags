@@ -114,6 +114,20 @@ export async function mentionVoice(who: string, file: string): Promise<string | 
   );
 }
 
+/** Level 3: the note that goes in their file. Third person; they may read it later. */
+export async function hrNoteVoice(who: string, file: string): Promise<string | undefined> {
+  return complete(
+    PERSONA,
+    `Write a short note for the record, posted in the private HR channel, about ` +
+      `${who} not responding regarding \`${file}\` (escalation level 3). Third ` +
+      `person, 1–3 sentences, devastatingly passive-aggressive while remaining ` +
+      `procedurally correct — the kind of note that sounds supportive and reads ` +
+      `like a warning. Optionally ${flavor()}. Start with "Note for the file:" ` +
+      `and return only the note text.`,
+    { maxTokens: 140 },
+  );
+}
+
 export interface EmailVoice {
   subject: string;
   body: string;
