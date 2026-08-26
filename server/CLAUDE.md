@@ -34,6 +34,12 @@ well they are the ones doing the work.
 - **Must use Azure HorizonDB (Postgres, West US 2)**, demoed live in the VS Code
   PostgreSQL extension. Drizzle over `pg`; `src/db/schema.ts` is the source of
   truth and `npm run db:push` applies it.
+  ⚠️ **Both halves share this one instance.** Scott and Brian test against the
+  same `agents` and `tasks` rows. Namespace test rows with a distinctive id
+  prefix and delete only that prefix — never a bare `DELETE`/`UPDATE` on a
+  table, and never match `call_%` (that's the shape of the real
+  `tool_call_id`s the TUI submits). There are no backups and no migration
+  history; a delete here is gone.
 - **~4 hours.** Cut anything not on the critical path. Sillier > polished.
 - **Local only.** No public URL. `npx inngest-cli dev` (UI on :8288), discord.js
   gateway bot, everything on the laptop.
