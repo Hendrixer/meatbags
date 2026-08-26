@@ -193,6 +193,43 @@ export async function recomputeResponseStats(): Promise<void> {
      where a.discord_id = sub.agent_id`);
 }
 
+/** A roster member plus how much work they're currently on the hook for. */
+export interface Candidate {
+  discordId: string;
+  name: string;
+  /** Tasks assigned to them and not yet answered. */
+  openTasks: number;
+  /** When they were last handed anything, for round-robin ordering. */
+  lastAssignedAt: Date | null;
+}
+
+/**
+ * The roster ordered for round-robin: whoever is carrying the least work, and
+ * among equals whoever has gone longest without being volunteered for anything.
+ * Someone who has never been assigned sorts first — fresh meat goes first.
+ */
+export async function readCandidates(discordIds: string[]): Promise<Candidate[]> {
+  if (discordIds.length === 0) return [];
+  const rows = await getDb().execute(sql`
+    select a.discord_id,
+           a.name,
+           count(t.id) filter (where t.status = 'assigned')::int as open_tasks,
+           max(t.assigned_at)                                    as last_assigned_at
+      from ${agents} a
+      left join ${tasks} t on t.agent_id = a.discord_id
+     where a.discord_id in (${sql.join(discordIds.map((d) => sql`${d}`), sql`, `)})
+     group by a.discord_id, a.name
+     order by open_tasks asc,
+              last_assigned_at asc nulls first,
+              a.name asc`);
+  return (rows.rows as Record<string, unknown>[]).map((r) => ({
+    discordId: String(r.discord_id),
+    name: String(r.name),
+    openTasks: Number(r.open_tasks ?? 0),
+    lastAssignedAt: r.last_assigned_at ? new Date(String(r.last_assigned_at)) : null,
+  }));
+}
+
 /** Everything the leaderboard shows, worst offenders last. */
 export async function readLeaderboard(): Promise<Agent[]> {
   return getDb()

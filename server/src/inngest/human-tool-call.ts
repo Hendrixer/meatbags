@@ -8,13 +8,7 @@
 import { NonRetriableError } from "inngest";
 import { inngest } from "./client.js";
 import { config } from "../config.js";
-import {
-  getTask,
-  readRoster,
-  dispatchTask,
-  completeTask,
-  bumpEscalation,
-} from "../db/repo.js";
+import { getTask, dispatchTask, completeTask, bumpEscalation } from "../db/repo.js";
 import { assign, summarize } from "../supervisor/index.js";
 
 /** How long a level waits before the ladder climbs. */
@@ -60,12 +54,15 @@ export const humanToolCall = inngest.createFunction(
       const task = await getTask(taskId);
       if (!task) throw new NonRetriableError(`no task ${taskId}`);
 
-      const roster = await readRoster();
-      const { assignee, ask } = await assign(task.toolName, task.args, roster);
+      // Roster is read live from Discord here, not at submit time — whoever is
+      // in the server when the task lands is who's eligible for it.
+      const { assignee, ask, how } = await assign(task.toolName, task.args);
+      console.log(`📋 ${taskId} → ${assignee.name} [${how}]`);
+
       const threadId = await postTask(assignee, ask, taskId);
       await dispatchTask(taskId, { agentId: assignee.discordId, threadId });
 
-      return { assignee: assignee.name, threadId, summary: summarize(task.toolName, task.args) };
+      return { assignee: assignee.name, threadId, how, summary: summarize(task.toolName, task.args) };
     });
 
     // ── wait, climbing the ladder on each silence ─────────────────────────

@@ -1,25 +1,24 @@
 /**
- * Pre-register the roster with skill tags. Idempotent: re-running refreshes
- * names and skills but never duplicates a row or resets anyone's stats.
+ * Optional skill tagging.
  *
- * Anyone who speaks in #general gets upserted automatically too — this seed is
- * for the folks we want to have skills on before the demo starts.
+ * The roster is no longer seeded with people — the workflow reads the live
+ * member list from Discord at dispatch time and upserts whoever is in the
+ * server, so anyone who joins is eligible immediately. This script exists only
+ * to attach skill tags to ids we already know, and to show the current roster.
  *
- * NOTE: `discordId` must be a real Discord user id for the @mention in a task
- * thread to actually ping them. Right-click a user → Copy User ID (Developer
- * Mode on). The placeholders below will create rows that mention nobody.
+ * Add entries with REAL Discord user ids (Developer Mode on → right-click a
+ * user → Copy User ID). Placeholder ids would create people who can't be
+ * @mentioned and who round-robin would happily assign work to.
  */
 import { upsertAgent, readRoster } from "./repo.js";
 import { closeDb } from "./client.js";
 
-const ROSTER: { discordId: string; name: string; skills: string[] }[] = [
-  { discordId: "REPLACE_ME_SCOTT", name: "Scott", skills: ["typescript", "backend", "inngest"] },
-  { discordId: "REPLACE_ME_BRIAN", name: "Brian", skills: ["typescript", "frontend", "tui"] },
-  { discordId: "REPLACE_ME_MILTON", name: "Milton", skills: ["stapler", "basement"] },
+const SKILLS: { discordId: string; name: string; skills: string[] }[] = [
+  // { discordId: "356945652858748931", name: "Scotty", skills: ["typescript", "backend"] },
 ];
 
 async function main(): Promise<void> {
-  for (const person of ROSTER) {
+  for (const person of SKILLS) {
     await upsertAgent(person);
   }
   const roster = await readRoster();
@@ -29,12 +28,8 @@ async function main(): Promise<void> {
       `  ${a.name} · skills: ${a.skills.join(", ") || "none"} · done: ${a.tasksCompleted} · flair: ${a.flair}`,
     );
   }
-  const placeholders = roster.filter((a) => a.discordId.startsWith("REPLACE_ME_"));
-  if (placeholders.length > 0) {
-    console.log(
-      `\n⚠️  ${placeholders.length} placeholder discord id(s) — @mentions won't ping anyone.` +
-        `\n   Put real ids in src/db/seed.ts and re-run.`,
-    );
+  if (roster.length === 0) {
+    console.log("\n(empty — it fills in on the first dispatch from the live Discord roster)");
   }
   await closeDb();
 }

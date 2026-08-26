@@ -1,3 +1,10 @@
+## 0. Assignment
+
+- [x] 0.1 Read the live guild member list at dispatch time and upsert everyone into the roster, so anyone in the server is immediately eligible; verify a dispatch reports `discord (n)` as its roster source and the roster fills in with real Discord ids.
+- [x] 0.2 Cache the member fetch — a full fetch is a gateway op that rate-limits after one call; verify eight consecutive dispatches all report `discord (n)` with no fallback to the stored roster.
+- [x] 0.3 Fall back to the stored roster when Discord is unconfigured or unreachable; verify a dispatch still assigns and reports `stored (n)`.
+- [x] 0.4 Pick round-robin by workload: fewest unanswered tasks, then longest since last assigned; verify eight dispatches rotate evenly across four members and that freeing someone up moves them back into rotation.
+
 ## 1. Supervisor voice
 
 - [ ] 1.1 Add a Foundry client wrapper in `src/supervisor/` exposing a single completion call reading the existing `FOUNDRY_*` config; verify one completion returns text against the configured deployment.
