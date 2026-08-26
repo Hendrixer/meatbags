@@ -84,7 +84,11 @@ export async function dispatchTask(
  * task matches nothing.
  */
 export async function findTaskByThread(threadId: string): Promise<Task | undefined> {
-  const [row] = await getDb().select().from(tasks).where(eq(tasks.threadId, threadId));
+  const [row] = await getDb()
+    .select()
+    .from(tasks)
+    .where(eq(tasks.threadId, threadId))
+    .limit(1);
   return row;
 }
 

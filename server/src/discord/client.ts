@@ -55,7 +55,7 @@ export async function startBot(): Promise<void> {
         });
         console.log(`↩ reply in thread ${routed.threadId} → human/task.completed for ${task.id}`);
       } else if (routed.kind === "general-speak") {
-        await upsertAgent(routed.discordId, routed.name);
+        await upsertAgent({ discordId: routed.discordId, name: routed.name });
         console.log(`👋 roster upsert: ${routed.name} (${routed.discordId})`);
       }
     } catch (err) {
