@@ -43,6 +43,7 @@ export const config = {
     endpoint: str("FOUNDRY_ENDPOINT"),
     apiKey: str("FOUNDRY_API_KEY"),
     deployment: str("FOUNDRY_DEPLOYMENT"),
+    ttsDeployment: str("FOUNDRY_DEPLOYMENT_TTS"),
   },
 
   // ElevenLabs

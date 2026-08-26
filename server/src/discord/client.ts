@@ -1,5 +1,7 @@
 import { Client, GatewayIntentBits, Events, type Message } from "discord.js";
 import { config, require_ } from "../config.js";
+import { findTaskByThread, upsertAgent } from "../db/index.js";
+import { inngest } from "../inngest/client.js";
 import { classifyMessage, type IncomingMessage } from "./routing.js";
 
 let client: Client | undefined;
@@ -44,13 +46,17 @@ export async function startBot(): Promise<void> {
     });
     try {
       if (routed.kind === "thread-reply") {
-        // TODO(tui-tool-handoff 4.2): resolve routed.threadId to its task, then
-        // send human/task.completed with that task's id. Needs the persistence
-        // layer — a thread id is no longer a task id.
-        void routed;
+        const task = await findTaskByThread(routed.threadId);
+        if (!task) return; // a thread we didn't open, or one with no task yet
+        if (task.status === "completed") return; // late chatter; the reply already landed
+        await inngest.send({
+          name: "human/task.completed",
+          data: { taskId: task.id, reply: routed.reply },
+        });
+        console.log(`↩ reply in thread ${routed.threadId} → human/task.completed for ${task.id}`);
       } else if (routed.kind === "general-speak") {
-        // TODO(tui-tool-handoff 4.4): upsert the speaker into `agents`.
-        void routed;
+        await upsertAgent(routed.discordId, routed.name);
+        console.log(`👋 roster upsert: ${routed.name} (${routed.discordId})`);
       }
     } catch (err) {
       console.error("discord message handler error:", (err as Error).message);

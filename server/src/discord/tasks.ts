@@ -5,12 +5,10 @@ import {
 } from "discord.js";
 import { getClient } from "./client.js";
 import { config, require_ } from "../config.js";
+import type { Agent } from "../db/index.js";
 
-/** The bit of a roster member this module needs to mention them. */
-export interface Assignee {
-  discordId: string;
-  name: string;
-}
+/** The bit of a roster row this module needs to mention them. */
+export type Assignee = Pick<Agent, "discordId" | "name">;
 
 async function tasksChannel(): Promise<TextChannel> {
   const id = require_(config.discord.tasksChannelId, "DISCORD_TASKS_CHANNEL_ID");
