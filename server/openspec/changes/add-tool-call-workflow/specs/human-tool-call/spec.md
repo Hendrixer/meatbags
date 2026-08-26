@@ -26,11 +26,21 @@ Before waiting, a run SHALL pick a human from the roster, produce a
 human-readable ask from the tool call, post that ask to a Discord thread
 dedicated to this task, and record the assignee and thread against the task.
 
+The chosen human SHALL be recorded as soon as they are chosen, rather than only
+once the thread exists — producing the ask and opening the thread take seconds,
+and a task with no assignee at all reads as broken to anyone polling it.
+
 #### Scenario: A queued task is dispatched
 - **WHEN** a run begins for a queued task
 - **THEN** a human is picked from the roster
 - **AND** a Discord thread is created carrying the ask
 - **AND** the task records that assignee and thread and moves to `assigned`
+
+#### Scenario: The assignee is known before the thread is
+- **WHEN** a run has chosen a human but has not yet produced the ask or opened
+  the thread
+- **THEN** the task already reports who it is assigned to
+- **AND** it reports no thread yet
 
 #### Scenario: Dispatch cannot proceed without a roster
 - **WHEN** a run begins and the roster has no members

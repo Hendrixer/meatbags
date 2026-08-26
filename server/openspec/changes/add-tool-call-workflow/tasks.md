@@ -1,7 +1,7 @@
 ## 1. The workflow
 
 - [x] 1.1 Create the `human-tool-call` Inngest function triggered by `tool/call.requested`, reading the task by the event's `taskId`; verify sending the event starts exactly one run in the dev UI and the run logs the tool name read off the row.
-- [ ] 1.2 Implement the dispatch step as one durable step — `writeAsk` → `createTaskThread` → `dispatchTask`; verify a run produces a visible Discord thread mentioning the assignee and moves the task to `assigned` with both `thread_id` and `assigned_at` set.
+- [x] 1.2 Record the assignee as soon as they're picked, then produce the ask and open the thread in a second durable step; verify a poll reports the assignee within a second of submission while the thread is still absent. Originally one step — `writeAsk` → `createTaskThread` → `dispatchTask`; verify a run produces a visible Discord thread mentioning the assignee and moves the task to `assigned` with both `thread_id` and `assigned_at` set.
 - [ ] 1.3 Verify a retried dispatch does not open a second thread for the same task.
 - [x] 1.4 Fail the run rather than dispatching when the roster is empty; verify a run against an empty roster errors in the dev UI and creates no thread.
 - [x] 1.5 Implement the wait — `step.waitForEvent("human/task.completed")` matched on this task's id — then `completeTask` with the reply; verify a reply in the thread resumes the run and stores the text verbatim.

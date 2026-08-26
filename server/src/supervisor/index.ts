@@ -41,20 +41,21 @@ async function liveRoster(): Promise<{ ids: string[]; source: string }> {
 }
 
 /**
- * Pick who gets stuck with this, and write the ask.
+ * Pick who gets stuck with this.
  *
  * Round-robin by current workload: whoever has the fewest unanswered tasks, and
  * among equals whoever has gone longest without being handed anything. It is
  * deliberately not "best person for the job" — the joke is that the work lands
  * on whoever is standing closest to it.
  *
- * `add-supervisor-voice` puts a Foundry call in front of the ask; the pick stays
- * here.
+ * Separate from `writeAsk` so the workflow can record the assignee immediately
+ * and only then spend seconds on the model and Discord. Otherwise a task reads
+ * as unassigned for the whole dispatch.
  */
-export async function assign(
-  toolName: string,
-  args: Record<string, unknown>,
-): Promise<Assignment> {
+export async function pickAssignee(): Promise<{
+  assignee: Pick<Agent, "discordId" | "name">;
+  how: string;
+}> {
   const { ids, source } = await liveRoster();
   if (ids.length === 0) {
     throw new Error(
@@ -80,7 +81,6 @@ export async function assign(
     if (target) {
       return {
         assignee: { discordId: target.discordId, name: target.name },
-        ask: describeTask(toolName, args),
         how: `PINNED via ASSIGN_ALL_TO=${pin}`,
       };
     }
@@ -92,18 +92,25 @@ export async function assign(
   }
 
   const picked = candidates[0];
-  const how =
-    `${source} · open=${picked.openTasks} · ` +
-    `last=${picked.lastAssignedAt ? picked.lastAssignedAt.toISOString() : "never"}`;
-
-  // Best-effort personality; the deterministic ask stands on its own if the
-  // model is unconfigured, slow, or weird.
-  const file = String((args as { file?: unknown }).file ?? toolName);
-  const voice = await askVoice(picked.name, file);
-
   return {
     assignee: { discordId: picked.discordId, name: picked.name },
-    ask: describeTask(toolName, args, voice),
-    how: `${how}${voice ? " · voiced" : " · stock ask"}`,
+    how:
+      `${source} · open=${picked.openTasks} · ` +
+      `last=${picked.lastAssignedAt ? picked.lastAssignedAt.toISOString() : "never"}`,
   };
+}
+
+/**
+ * Write the ask for a chosen assignee. The model call is best-effort — the
+ * deterministic ask stands on its own if it's unconfigured, slow, or weird —
+ * and it applies whether or not the assignee was pinned.
+ */
+export async function writeAsk(
+  toolName: string,
+  args: Record<string, unknown>,
+  assigneeName: string,
+): Promise<{ ask: string; voiced: boolean }> {
+  const file = String((args as { file?: unknown }).file ?? toolName);
+  const voice = await askVoice(assigneeName, file);
+  return { ask: describeTask(toolName, args, voice), voiced: Boolean(voice) };
 }

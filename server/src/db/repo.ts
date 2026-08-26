@@ -60,6 +60,16 @@ export async function getTask(id: string): Promise<TaskWithAssignee | undefined>
   return row ? { ...row.task, assigneeName: row.assigneeName } : undefined;
 }
 
+/**
+ * Record who a task is going to, before we know where. Dispatch spends several
+ * seconds on the model and Discord after this, and a task with no assignee at
+ * all reads as broken to anyone polling it — this way the caller sees a name
+ * immediately and the thread link follows.
+ */
+export async function recordAssignee(id: string, agentId: string): Promise<void> {
+  await getDb().update(tasks).set({ agentId }).where(eq(tasks.id, id));
+}
+
 /** Hand the task to a human: record who has it and where, and start the clock. */
 export async function dispatchTask(
   id: string,

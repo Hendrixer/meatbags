@@ -10,12 +10,13 @@ import { inngest } from "./client.js";
 import { config } from "../config.js";
 import {
   getTask,
+  recordAssignee,
   dispatchTask,
   completeTask,
   bumpEscalation,
   abandonTask,
 } from "../db/repo.js";
-import { assign, summarize, unansweredResult } from "../supervisor/index.js";
+import { pickAssignee, writeAsk, summarize, unansweredResult } from "../supervisor/index.js";
 import { nag } from "./nags.js";
 
 /** How long a level waits before the ladder climbs. */
@@ -87,19 +88,36 @@ export const humanToolCall = inngest.createFunction(
     // ── dispatch ──────────────────────────────────────────────────────────
     // One step: a retry replays the whole handoff or none of it, so we can't
     // end up with two threads for one task.
-    const dispatched = await step.run("assign-and-hand-off", async () => {
+    // ── pick ──────────────────────────────────────────────────────────────
+    // Cheap: a roster read and a choice. Recorded straight away so anyone
+    // polling sees a name immediately, rather than an unassigned-looking task
+    // for the several seconds the model and Discord take below.
+    const picked = await step.run("pick-assignee", async () => {
+      const task = await getTask(taskId);
+      if (!task) throw new NonRetriableError(`no task ${taskId}`);
+      const { assignee, how } = await pickAssignee();
+      await recordAssignee(taskId, assignee.discordId);
+      console.log(`📋 ${taskId} → ${assignee.name} [${how}]`);
+      return { discordId: assignee.discordId, name: assignee.name, how };
+    });
+
+    // ── hand off ──────────────────────────────────────────────────────────
+    // The slow half: the model writes the ask and Discord opens the thread.
+    // Both stay in one step so a retry can't leave a second thread behind.
+    const dispatched = await step.run("write-ask-and-open-thread", async () => {
       const task = await getTask(taskId);
       if (!task) throw new NonRetriableError(`no task ${taskId}`);
 
-      // Roster is read live from Discord here, not at submit time — whoever is
-      // in the server when the task lands is who's eligible for it.
-      const { assignee, ask, how } = await assign(task.toolName, task.args);
-      console.log(`📋 ${taskId} → ${assignee.name} [${how}]`);
+      const { ask, voiced } = await writeAsk(task.toolName, task.args, picked.name);
+      const threadId = await postTask(picked, ask, taskId);
+      await dispatchTask(taskId, { agentId: picked.discordId, threadId });
 
-      const threadId = await postTask(assignee, ask, taskId);
-      await dispatchTask(taskId, { agentId: assignee.discordId, threadId });
-
-      return { assignee: assignee.name, threadId, how, summary: summarize(task.toolName, task.args) };
+      return {
+        assignee: picked.name,
+        threadId,
+        voiced,
+        summary: summarize(task.toolName, task.args),
+      };
     });
 
     // ── wait, climbing the ladder on each silence ─────────────────────────
