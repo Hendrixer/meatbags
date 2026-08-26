@@ -3,7 +3,7 @@ import { config } from "../config.js";
 
 let client: Resend | undefined;
 
-const FROM = "Bill Lumbergh <lumbergh@meatbags.dev>";
+const FROM = "TPS HR <hr@meatbag.lol>";
 
 export interface EmailInput {
   to: string;
@@ -24,11 +24,15 @@ export async function sendEmail(input: EmailInput): Promise<void> {
     return;
   }
   client ??= new Resend(config.resend.apiKey);
-  await client.emails.send({
+  // The SDK reports failures in the return value rather than throwing; check it
+  // or a rejected send looks exactly like a delivered one.
+  const { data, error } = await client.emails.send({
     from: FROM,
     to: input.to,
     ...(input.cc ? { cc: input.cc } : {}),
     subject: input.subject,
     html: `<pre style="font-family:inherit;white-space:pre-wrap">${input.body}</pre>`,
   });
+  if (error) throw new Error(`Resend: ${error.name}: ${error.message}`);
+  console.log(`✉ sent ${data?.id} to=${input.to} subject="${input.subject}"`);
 }

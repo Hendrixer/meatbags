@@ -10,6 +10,7 @@ import { inngest } from "./client.js";
 import { config } from "../config.js";
 import { getTask, dispatchTask, completeTask, bumpEscalation } from "../db/repo.js";
 import { assign, summarize } from "../supervisor/index.js";
+import { nag } from "./nags.js";
 
 /** How long a level waits before the ladder climbs. */
 const WAIT_TIMEOUT = config.waitTimeout;
@@ -84,6 +85,8 @@ export const humanToolCall = inngest.createFunction(
 
       if (level < MAX_LEVEL) {
         level = await step.run(`escalate-${attempt}`, () => bumpEscalation(taskId));
+        // Keyed by level, not attempt, so a replayed run never nags a level twice.
+        await step.run(`nag-L${level}`, () => nag(taskId, level));
       }
       // At the top of the ladder we keep waiting. We never give up on a meatbag.
     }
