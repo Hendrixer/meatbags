@@ -24,10 +24,16 @@ function attachment(audio?: Buffer | string) {
   return [new AttachmentBuilder(audio as never, { name: "voicemail.mp3" })];
 }
 
+/** Discord rejects message content over 2000 chars; leave headroom for the mention. */
+const MAX_CONTENT = 1900;
+
 /**
  * Open a thread per task in #tasks and post the ask (with an optional voicemail
- * mp3). The caller records the returned thread id against the task; the task's
- * own id comes from the TUI's tool call.
+ * mp3). An ask that exceeds Discord's message limit — any edit carrying real
+ * code does — leads with its opening lines and ships the full brief as an
+ * attachment instead of silently failing. If the post fails anyway, the thread
+ * is deleted before rethrowing, so a retried dispatch doesn't litter #tasks
+ * with created-but-silent threads.
  */
 export async function createTaskThread(
   assignee: Assignee,
@@ -36,13 +42,31 @@ export async function createTaskThread(
 ): Promise<{ threadId: string }> {
   const channel = await tasksChannel();
   const thread = await channel.threads.create({
-    name: `task: ${ask.slice(0, 80)}`,
+    name: `task: ${ask.split("\n")[0].slice(0, 80)}`,
     autoArchiveDuration: 60,
   });
-  await thread.send({
-    content: `<@${assignee.discordId}> ${ask}`,
-    files: attachment(audio),
-  });
+  try {
+    const mention = `<@${assignee.discordId}> `;
+    if (mention.length + ask.length <= MAX_CONTENT) {
+      await thread.send({ content: mention + ask, files: attachment(audio) });
+    } else {
+      const cut = ask.slice(0, 600);
+      const intro = cut.slice(0, cut.lastIndexOf("\n") > 200 ? cut.lastIndexOf("\n") : 600);
+      await thread.send({
+        content:
+          `${mention}${intro}\n\n**The full brief is attached** — the complete ` +
+          `description, the required interface, and the current code. Everything ` +
+          `you need. No excuses about missing context, please.`,
+        files: [
+          new AttachmentBuilder(Buffer.from(ask, "utf8"), { name: "task-brief.md" }),
+          ...attachment(audio),
+        ],
+      });
+    }
+  } catch (err) {
+    await thread.delete().catch(() => {});
+    throw err;
+  }
   return { threadId: thread.id };
 }
 
