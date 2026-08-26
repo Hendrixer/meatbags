@@ -40,12 +40,15 @@ export async function nag(taskId: string, level: number): Promise<string> {
     } catch (err) {
       console.warn(`level 2 voicemail render failed: ${(err as Error).message}`);
     }
-    const text =
-      (await mentionVoice(who, file)) ??
-      `Just circling back on "${subjectWhat}" — I'm not seeing a reply in the thread yet. ` +
-        `Not a big deal, just, you know. It's been a while. Mmkay?`;
+    // Voicemail lands with no transcript — they have to listen. Prose is the
+    // fallback for when the render fails.
+    const text = audio
+      ? ""
+      : (await mentionVoice(who, file)) ??
+        `Just circling back on "${subjectWhat}" — I'm not seeing a reply in the thread yet. ` +
+          `Not a big deal, just, you know. It's been a while. Mmkay?`;
     await publicMention({ discordId: task.agentId }, text, audio);
-    return `level 2: public mention posted${audio ? " with voicemail" : ""}`;
+    return `level 2: ${audio ? "voicemail-only mention" : "text mention"} posted`;
   }
 
   if (level >= 3) {
@@ -59,7 +62,7 @@ export async function nag(taskId: string, level: number): Promise<string> {
             `Several. Times. So we're going to need that today. ...Thanks so much.`;
         const audio = await renderVoicemail(script, ANGRY_DELIVERY);
         if (audio) {
-          await nagInThread(task.threadId, "You have one (1) new voicemail. The tone is noted.", audio);
+          await nagInThread(task.threadId, "", audio);
         }
       } catch (err) {
         console.warn(`level 3 voicemail skipped: ${(err as Error).message}`);

@@ -46,7 +46,7 @@ export async function createTaskThread(
   return { threadId: thread.id };
 }
 
-/** Post a nag (with optional voicemail) into an existing task thread. */
+/** Post a nag into an existing task thread. Empty text + audio = just the voicemail. */
 export async function nagInThread(
   threadId: string,
   text: string,
@@ -54,7 +54,7 @@ export async function nagInThread(
 ): Promise<void> {
   const thread = await getClient().channels.fetch(threadId);
   if (thread?.isThread()) {
-    await thread.send({ content: text, files: attachment(audio) });
+    await thread.send({ ...(text ? { content: text } : {}), files: attachment(audio) });
   }
 }
 
@@ -75,5 +75,8 @@ export async function publicMention(
   audio?: Buffer | string,
 ): Promise<void> {
   const channel = await tasksChannel();
-  await channel.send({ content: `<@${assignee.discordId}> ${text}`, files: attachment(audio) });
+  await channel.send({
+    content: `<@${assignee.discordId}>${text ? ` ${text}` : ""}`,
+    files: attachment(audio),
+  });
 }
