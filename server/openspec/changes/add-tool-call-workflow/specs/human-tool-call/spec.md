@@ -26,8 +26,8 @@ Before waiting, a run SHALL pick a human from the roster, produce a
 human-readable ask from the tool call, post that ask to a Discord thread
 dedicated to this task, and record the assignee and thread against the task.
 
-#### Scenario: A pending task is dispatched
-- **WHEN** a run begins for a pending task
+#### Scenario: A queued task is dispatched
+- **WHEN** a run begins for a queued task
 - **THEN** a human is picked from the roster
 - **AND** a Discord thread is created carrying the ask
 - **AND** the task records that assignee and thread and moves to `assigned`

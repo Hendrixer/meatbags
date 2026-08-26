@@ -54,7 +54,7 @@ attachment rather than inline.
 ## Risks / Trade-offs
 
 - **Latency sits between submit and `assigned`.** → It runs inside the workflow,
-  so the TUI just sees `pending` for an extra poll or two.
+  so the TUI just sees `queued` for an extra poll or two.
 - **The model writes something less funny than a hand-written line.** → Accepted;
   the fallback text is the floor, not the ceiling.
 - **A prompt that leaks the mechanics into the ask.** → The ask is read by humans

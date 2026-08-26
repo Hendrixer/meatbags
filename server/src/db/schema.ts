@@ -16,8 +16,8 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
-/** A task is pending when submitted, assigned once a human has it, completed once they answer. */
-export type TaskStatus = "pending" | "assigned" | "completed";
+/** A task is queued when submitted, assigned once a human has it, completed once they answer. */
+export type TaskStatus = "queued" | "assigned" | "completed";
 
 /**
  * The humans. Discord says who's here; Horizon says what we know about them.
@@ -38,10 +38,9 @@ export const agents = pgTable("agents", {
 /**
  * One row per tool call the TUI hands us.
  *
- * `id` is minted here and returned from the submit route; the TUI treats it as
- * opaque. It can't be the Discord thread id — the TUI needs an id back the
- * moment it submits, long before a thread exists — so the thread id is a
- * separate column and the bot resolves thread → task through it.
+ * `id` is the caller's own tool call id — the TUI needs an id back the moment it
+ * submits, long before a Discord thread exists — so the thread id is a separate
+ * column and the bot resolves thread → task through it.
  *
  * `created_at` is when the call arrived; `assigned_at` is when a human actually
  * got it. Response times are measured from the latter, so our own dispatch
@@ -60,7 +59,7 @@ export const tasks = pgTable(
     /** The human-readable ask that gets posted to Discord. */
     description: text("description").notNull(),
 
-    status: text("status").$type<TaskStatus>().notNull().default("pending"),
+    status: text("status").$type<TaskStatus>().notNull().default("queued"),
     escalationLevel: integer("escalation_level").notNull().default(1),
 
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

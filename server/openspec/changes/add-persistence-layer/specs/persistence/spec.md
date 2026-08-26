@@ -6,17 +6,16 @@ assignment and the leaderboard both read.
 
 ## ADDED Requirements
 
-### Requirement: Task identity is minted at submission
+### Requirement: Task identity is the caller's tool call id
 
-A task SHALL be assigned an opaque identifier when it is recorded, returned to
-the caller immediately, and treated as opaque by them. It SHALL NOT be the
-Discord thread id, so that the caller can poll before any thread exists. The
-thread id SHALL be stored as a separate value, unique across tasks, and absent
-until a thread exists.
+A task SHALL be identified by the tool call id supplied by the caller, so the
+caller can poll immediately without waiting for any downstream system to assign
+an id. The Discord thread id SHALL be stored as a separate value, unique across
+tasks, and absent until a thread exists.
 
 #### Scenario: Task is addressable before a thread exists
 - **WHEN** a tool call is recorded but no Discord thread has been created yet
-- **THEN** the task is retrievable by the identifier returned at submission
+- **THEN** the task is retrievable by the caller's tool call id
 - **AND** its thread id is absent
 
 #### Scenario: Thread id resolves back to the task
@@ -26,13 +25,13 @@ until a thread exists.
 
 ### Requirement: Task lifecycle
 
-A task SHALL occupy exactly one of three states: `pending` when recorded but not
+A task SHALL occupy exactly one of three states: `queued` when recorded but not
 yet handed to a human, `assigned` once a human has been picked and notified, and
 `completed` once that human has replied. States SHALL only advance forward.
 
-#### Scenario: A newly recorded task is pending
+#### Scenario: A newly recorded task is queued
 - **WHEN** a tool call is recorded
-- **THEN** its status is `pending`
+- **THEN** its status is `queued`
 - **AND** it has no assignee, no thread, and no reply
 
 #### Scenario: Dispatch moves the task to assigned

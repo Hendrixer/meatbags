@@ -28,7 +28,7 @@ handler.
 
 ### The thread → task lookup is the correlation mechanism
 
-`thread_id` is unique and null until dispatch, so a pending task matches nothing
+`thread_id` is unique and null until dispatch, so a queued task matches nothing
 and a thread matches at most one task. A message in a thread with no matching
 task emits nothing rather than guessing.
 

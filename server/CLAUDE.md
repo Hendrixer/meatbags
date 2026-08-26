@@ -41,8 +41,9 @@ well they are the ones doing the work.
 ## The flow
 ```
 TUI runs the agent loop; model calls write_code(...)
- → POST /api/tasks  { tool_name, file, description, contract, existing_code }
- → mint taskId, insert `tasks` row (status=pending), 201 { taskId }
+ → POST /api/tasks  { id, tool_name, arguments: {file, description, contract,
+                                                  existing_code} }
+ → insert `tasks` row (id = caller's id, status=queued), echo the id
  → inngest.send("tool/call.requested", { taskId })       ← nothing else in POST
  → Inngest fn "human-tool-call":
      → one Foundry call: pick a human from the roster + write the snarky ask
@@ -51,22 +52,26 @@ TUI runs the agent loop; model calls write_code(...)
          ├─ human replies in thread → bot resolves thread_id → task → sends event
          │                          → completeTask stores the reply VERBATIM
          └─ timeout → bump escalation_level → nag → wait again
- → meanwhile the TUI polls GET /api/tasks/:taskId every 2s, forever
+ → meanwhile the TUI polls GET /api/tasks/:id every 2s, forever
  → status=completed + reply → TUI strips one layer of ``` fences and writes the
    reply to disk as the new file contents
 ```
 
 ## Correlation key (decided — revised)
 
-**We mint the task id.** The TUI needs an id back the instant it posts, long
-before a Discord thread exists, so `tasks.id` is a server-minted opaque string
-and **`thread_id` is its own unique column**. The bot resolves thread → task
+**`tasks.id` is the caller's `tool_call_id`.** The TUI needs an id back the
+instant it posts, long before a Discord thread exists, so the thread id can't be
+it — **`thread_id` is its own unique column**. The bot resolves thread → task
 through it and puts that `taskId` on the `human/task.completed` event, which is
 what `waitForEvent` matches on.
 
+Using the model's own tool-call id means the TUI keeps no mapping and can retry a
+failed POST safely: a duplicate id returns `409`, which it reads as "already
+submitted, just poll it". A conflict must therefore leave the existing row
+completely untouched.
+
 *(This supersedes the earlier "thread.id IS task.id" decision, which couldn't
-survive the TUI needing a synchronous id. `tui/CONTRACT.md` asks for exactly this
-shape.)*
+survive the TUI needing a synchronous id.)*
 
 ## Escalation ladder
 
@@ -106,9 +111,10 @@ Lumbergh the longer a task sits.
 
 - **`agents`** — the humans. `discord_id`, `name`, `skills[]`, `tasks_completed`,
   `avg_response_secs`, `warnings`, `voicemails_received`, `flair`.
-- **`tasks`** — `id` (server-minted), `thread_id` (unique, null until dispatch),
+- **`tasks`** — `id` (the caller's `tool_call_id`), `thread_id` (unique, null
+  until dispatch),
   `agent_id`, `tool_name`, `args` (jsonb: file / contract / existing_code),
-  `description`, `status` (`pending` → `assigned` → `completed`),
+  `description`, `status` (`queued` → `assigned` → `completed`),
   `escalation_level`, `created_at` (submitted), `assigned_at` (handed to a
   human — response times measure from here, not from `created_at`),
   `completed_at`, `reply`, `audio_url`.
