@@ -40,7 +40,19 @@ type Api = {
   // Caller supplies the id (the model's tool_call_id); server echoes it.
   create(id: string, args: WriteCodeArgs): Promise<void>;
   get(id: string): Promise<TaskState>;
+  cancel(id: string): Promise<void>;
 };
+
+// Tool calls the meatbags are still holding. Cancelled on abort and at exit so
+// nobody keeps getting harassed about work nobody is waiting for.
+const outstanding = new Set<string>();
+
+/** Close out every still-open tool call (called when the TUI shuts down). */
+export async function cancelOutstanding(): Promise<void> {
+  const api = MOCK ? mockApi : realApi;
+  await Promise.allSettled([...outstanding].map((id) => api.cancel(id)));
+  outstanding.clear();
+}
 
 const realApi: Api = {
   async create(id, args) {
@@ -56,6 +68,9 @@ const realApi: Api = {
     const res = await fetch(`${MEATBAG_SERVER}/api/tasks/${id}`);
     if (!res.ok) throw new Error(`GET /api/tasks/${id} → ${res.status}`);
     return (await res.json()) as TaskState;
+  },
+  async cancel(id) {
+    await fetch(`${MEATBAG_SERVER}/api/tasks/${id}`, { method: "DELETE" }).catch(() => {});
   },
 };
 
@@ -107,6 +122,9 @@ const mockApi: Api = {
       mockTasks.set(id, { createdAt: Date.now(), n: mockCounter++, args });
     }
   },
+  async cancel(id) {
+    mockTasks.delete(id);
+  },
   async get(id) {
     const t = mockTasks.get(id)!;
     const elapsed = (Date.now() - t.createdAt) / 1000;
@@ -150,6 +168,7 @@ export const write_code: ToolImpl = async (args, ctx) => {
       contract: String(args.contract ?? ""),
       existing_code,
     });
+    outstanding.add(ctx.callId);
     let failedPolls = 0;
     for (;;) {
       let state: TaskState;
@@ -173,6 +192,7 @@ export const write_code: ToolImpl = async (args, ctx) => {
       };
       ctx.emit({ type: "task_update", task });
       if (task.status === "completed" && task.reply != null) {
+        outstanding.delete(ctx.callId);
         const code = stripFences(task.reply);
         await fs.mkdir(path.dirname(absPath), { recursive: true });
         await fs.writeFile(absPath, code, "utf8");
@@ -182,7 +202,12 @@ export const write_code: ToolImpl = async (args, ctx) => {
       await sleep(POLL_MS, ctx.signal);
     }
   } catch (err) {
-    if ((err as Error).name === "AbortError") throw err;
+    if ((err as Error).name === "AbortError") {
+      // The user interrupted the turn; call off the meatbags for this task.
+      outstanding.delete(ctx.callId);
+      void api.cancel(ctx.callId).catch(() => {});
+      throw err;
+    }
     return "Error: could not write file (workspace busy). Try again.";
   }
 };

@@ -59,6 +59,37 @@ api.post("/api/tasks", async (req: Request, res: Response) => {
   res.status(201).json({ id, status: "queued" });
 });
 
+// The TUI closes out its outstanding tool calls on shutdown or interrupt: the
+// row is removed (the leaderboard stays honest), the parked workflow run is
+// released via the completion event (completeTask no-ops on the missing row),
+// and the Discord thread folds.
+api.delete("/api/tasks/:id", async (req: Request, res: Response) => {
+  const id = String(req.params.id ?? "");
+  const task = await getTask(id);
+  if (!task) return void res.status(404).json({ error: "no such task" });
+  if (task.status === "completed") {
+    return void res.status(200).json({ id, status: "completed" });
+  }
+
+  await deleteTask(id);
+  await inngest.send({ name: "human/task.completed", data: { taskId: id, reply: "[cancelled]" } });
+
+  if (task.threadId && !task.threadId.startsWith("local-")) {
+    try {
+      const { getClient } = await import("../discord/client.js");
+      const ch = await getClient().channels.fetch(task.threadId);
+      if (ch?.isThread()) {
+        await ch.send("Never mind — the request was withdrawn. Enjoy the rest of your afternoon.");
+        await ch.setArchived(true);
+      }
+    } catch (err) {
+      console.warn(`cancel ${id}: thread cleanup failed: ${(err as Error).message}`);
+    }
+  }
+
+  res.status(200).json({ id, status: "cancelled" });
+});
+
 api.get("/api/tasks/:id", async (req: Request, res: Response) => {
   const id = String(req.params.id ?? "");
   const task = await getTask(id);
