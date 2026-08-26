@@ -66,6 +66,10 @@ export const config = {
 
   // How long each escalation level waits before the ladder climbs.
   waitTimeout: str("WAIT_TIMEOUT") ?? "2m",
+
+  // Testing: pin every task to one person instead of round-robin. Accepts a
+  // Discord user id or a display name. Unset = normal assignment.
+  assignAllTo: str("ASSIGN_ALL_TO"),
 } as const;
 
 /** Throw a clear error if a required value is missing at the point of use. */

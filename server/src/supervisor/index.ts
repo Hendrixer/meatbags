@@ -1,4 +1,5 @@
 import type { Agent } from "../db/repo.js";
+import { config } from "../config.js";
 import { readCandidates, readRoster, upsertAgent } from "../db/repo.js";
 import { canFetchRoster, fetchGuildMembers } from "../discord/index.js";
 import { describeTask, summarize, unansweredResult } from "./describe.js";
@@ -65,6 +66,29 @@ export async function assign(
   const candidates = await readCandidates(ids);
   if (candidates.length === 0) {
     throw new Error(`Roster source ${source} returned ids we have no agent rows for.`);
+  }
+
+  // Testing override: pin everything to one person. Matches a Discord user id
+  // or a display name, so you don't have to go find your id. If they aren't in
+  // the server we fall through to normal assignment rather than addressing a
+  // task to somebody who can't be mentioned.
+  const pin = config.assignAllTo?.trim();
+  if (pin) {
+    const target = candidates.find(
+      (c) => c.discordId === pin || c.name.toLowerCase() === pin.toLowerCase(),
+    );
+    if (target) {
+      return {
+        assignee: { discordId: target.discordId, name: target.name },
+        ask: describeTask(toolName, args),
+        how: `PINNED via ASSIGN_ALL_TO=${pin}`,
+      };
+    }
+    console.warn(
+      `ASSIGN_ALL_TO="${pin}" matches nobody in the roster ` +
+        `(${candidates.map((c) => `${c.name}/${c.discordId}`).join(", ")}); ` +
+        `falling back to round-robin.`,
+    );
   }
 
   const picked = candidates[0];

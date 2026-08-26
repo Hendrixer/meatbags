@@ -172,6 +172,12 @@ npx --ignore-scripts=false inngest-cli@latest dev -u http://localhost:3000/api/i
 # dashboard: http://localhost:8288
 ```
 
+Testing knobs (all in `.env`, all unset on camera):
+`ASSIGN_ALL_TO` pins every task to one person — Discord user id or display name —
+instead of round-robin. `WAIT_TIMEOUT` shortens each escalation level (default
+`2m`, so the full ladder takes ~8 minutes to close out). `CONTRACTOR_AUTOREPLY_MS`
+auto-answers tasks so a run completes with nobody watching Discord.
+
 Planning lives in `openspec/changes/`, one change per capability. Shipped
 behaviour graduates to `openspec/specs/` — read that first, it's what's true.
 
